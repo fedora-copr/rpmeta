@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "rpmeta"
+version = "0.1"
+description = "TODO"
+authors = ["Copr Team <copr-devel@lists.fedorahosted.org>"]
+maintainers = ["Copr Team <copr-devel@lists.fedorahosted.org>"]
+license = "GPLv3"
+readme = "README.md"
+homepage = "https://github.com/fedora-copr/rpmeta"
+repository = "https://github.com/fedora-copr/rpmeta"
+
+
+[tool.poetry.dependencies]
+# TODO: I think? maybe lower...
+python = "^3.8"
+click = ">=8.0"
+fedora-distro-aliases = ">=1.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.scripts]
+rpmeta = "rpmeta.cli:entry_point"
