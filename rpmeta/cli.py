@@ -1,11 +1,12 @@
 import json
 import logging
 from datetime import datetime
-from os import PathLike
 from pathlib import Path
 from typing import Any, Optional
 
 import click
+from click import DateTime
+from click import Path as ClickPath
 
 from rpmeta.constants import HOST, PORT
 from rpmeta.model import load_model, make_prediction
@@ -35,12 +36,19 @@ def entry_point(debug: bool):
 
 
 @entry_point.command("serve")
-@click.option("--host", type=str, default=HOST, help="Host to serve the API on")
-@click.option("-p", "--port", type=int, default=PORT, help="Port to serve the API on")
+@click.option("--host", type=str, default=HOST, show_default=True, help="Host to serve the API on")
+@click.option(
+    "-p",
+    "--port",
+    type=int,
+    default=PORT,
+    show_default=True,
+    help="Port to serve the API on",
+)
 @click.option(
     "-m",
     "--model-path",
-    type=PathLike,
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
     required=True,
     help="Path to the model file",
 )
@@ -69,7 +77,7 @@ def serve(host: str, port: int, model_path: str):
 @click.option(
     "-m",
     "--model-path",
-    type=PathLike,
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
     required=True,
     help="Path to the model file",
 )
@@ -84,22 +92,22 @@ def predict(data: str, model_path: str):
         input_data = json.loads(data)
 
     model = load_model(model_path)
-    prediction, certainty = make_prediction(model, input_data)
-    print(f"Prediction: {prediction}, Certainty: {certainty}")
+    prediction, confidence = make_prediction(model, input_data)
+    print(f"Prediction: {prediction}, Confidence: {confidence}")
 
 
 @entry_point.command("train")
 @click.option(
     "-d",
     "--dataset-path",
-    type=PathLike,
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
     required=True,
     help="Path to the dataset file",
 )
 @click.option(
     "-s",
     "--destination-path",
-    type=PathLike,
+    type=ClickPath(exists=False, dir_okay=False, resolve_path=True, file_okay=True, writable=True),
     required=True,
     help="Path to save the model",
 )
@@ -108,6 +116,7 @@ def predict(data: str, model_path: str):
     "--random-state",
     type=int,
     default=42,
+    show_default=True,
     help="Random state for the model",
 )
 def train(dataset_path: str, destination_path: str, random_state: int):
@@ -122,18 +131,24 @@ def train(dataset_path: str, destination_path: str, random_state: int):
 
 
 @entry_point.command("fetch-data")
-@click.option("-p", "--path", type=PathLike, required=True, help="Path to save the data")
+@click.option(
+    "-p",
+    "--path",
+    type=ClickPath(exists=False, dir_okay=False, resolve_path=True),
+    required=True,
+    help="Path to save the data",
+)
 @click.option(
     "-s",
     "--start-date",
-    type=datetime,
+    type=Optional[DateTime(formats=["%Y-%m-%d"])],
     default=None,
     help="Start date for fetching data",
 )
 @click.option(
     "-e",
     "--end-date",
-    type=datetime,
+    type=Optional[DateTime(formats=["%Y-%m-%d"])],
     default=None,
     help="End date for fetching data",
 )
@@ -143,7 +158,7 @@ def train(dataset_path: str, destination_path: str, random_state: int):
     is_flag=True,
     default=False,
     help=(
-        "If script is running on Copr instance (e.g, Copr container instance), " "include this flag"
+        "If script is running on Copr instance (e.g, Copr container instance), include this flag"
     ),
 )
 @click.option("--koji", is_flag=True, help="Fetch data from Koji")
@@ -159,9 +174,6 @@ def fetch_data(
     Fetch the dataset from desired build systems
     """
     from rpmeta.fetcher import CoprFetcher, KojiFetcher
-
-    if Path(path).exists():
-        raise click.UsageError(f"File {path} already exists, won't overwrite it")
 
     if not (copr or koji):
         raise click.UsageError("At least one of --copr or --koji must be provided")

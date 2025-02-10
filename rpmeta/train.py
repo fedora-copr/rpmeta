@@ -29,7 +29,7 @@ class Trainer:
         if not Path(dataset_path).exists():
             raise FileNotFoundError(f"Dataset file {dataset_path} not found")
 
-        self._df = pd.read_csv(dataset_path)
+        self._df = pd.read_json(dataset_path)
 
         self._categorical_features = [
             "package_name",
@@ -71,6 +71,11 @@ class Trainer:
         self._df["swap"] = self._df["hw_info"].apply(lambda x: x["swap"] if x else None)
         self._df["bogomips"] = self._df["hw_info"].apply(
             lambda x: x["bogomips"] if x else None,
+        )
+
+        # get rid of empty string
+        self._df["bogomips"] = self._df["hw_info"].apply(
+            lambda x: None if not x or not x.get("bogomips") else x["bogomips"],
         )
 
         # drop these, no longer needed
