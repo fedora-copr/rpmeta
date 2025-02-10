@@ -25,7 +25,7 @@ On Fedora:
 Or from the source:
 
 ```bash
-pipx install git+https://github.com/packit/ogr.git
+pipx install git+https://github.com/fedora-copr/rpmeta.git
 ```
 
 ---
