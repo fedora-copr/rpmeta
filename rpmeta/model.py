@@ -1,10 +1,12 @@
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
 
 
-def load_model(model_path: str):
+def load_model(model_path: str) -> Pipeline:
     """
     Load the model from the given path.
 
@@ -17,7 +19,7 @@ def load_model(model_path: str):
     return joblib.load(model_path)
 
 
-def save_model(model, model_path: str):
+def save_model(model: Pipeline, model_path: str) -> None:
     """
     Save the model to the given path.
 
@@ -31,7 +33,7 @@ def save_model(model, model_path: str):
     joblib.dump(model, model_path)
 
 
-def make_prediction(model, input_data) -> tuple[int, float]:
+def make_prediction(model: Pipeline, input_data: dict) -> tuple[int, float]:
     """
     Make prediction on the input data using the model.
 
@@ -40,10 +42,16 @@ def make_prediction(model, input_data) -> tuple[int, float]:
         input_data: The input data to make prediction on
 
     Returns:
-        The prediction time in seconds and certainty - how much the model is sure about the
+        The prediction time in seconds and confidence - how much the model is sure about the
         prediction
     """
     df = pd.DataFrame([input_data])
-    prediction = model.predict(df)
-    probability = model.predict_proba(df)
-    return prediction[0], probability[0]
+    prediction = model.predict(df, output_margin=True)
+
+    std_dev = np.std(prediction)
+    if std_dev == 0:
+        confidence = 1
+    else:
+        confidence = (1 / (1 + np.exp(-prediction / std_dev)))[0].item()
+
+    return prediction[0].item(), confidence

@@ -20,8 +20,8 @@ async def predict_endpoint(request: Request) -> JSONResponse:
         return PlainTextResponse("Invalid Content-Type", status_code=400)
 
     data = await request.json()
-    result = make_prediction(model, data)
-    return JSONResponse(result)
+    prediction, confidence = make_prediction(model, data)
+    return JSONResponse({"prediction": prediction, "confidence": confidence})
 
 
 routes = [Route("/predict", predict_endpoint, methods=["POST"])]

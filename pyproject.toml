@@ -14,7 +14,13 @@ repository = "https://github.com/fedora-copr/rpmeta"
 # TODO: I think? maybe lower...
 python = "^3.8"
 click = ">=8.0"
-fedora-distro-aliases = ">=1.4"
+joblib = ">=1.0"
+pandas = ">=2.0"
+
+
+[tool.poetry.extras]
+server = ["starlette", "uvicorn"]
+trainer = ["koji", "tqdm", "fedora-distro-aliases", "scikit-learn", "xgboost"]
 
 
 [build-system]

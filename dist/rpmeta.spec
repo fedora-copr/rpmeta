@@ -21,14 +21,12 @@ Requires:       python3-joblib
 Requires:       python3-pandas
 
 # TODO: separate into subpackages for server, trainer and fetcher?
-# fetcher
+# trainer
 Recommends:     python3-fedora-distro-aliases
 Recommends:     python3-koji
+Recommends:     python3-scikit-learn
 # copr fetcher
 Recommends:     python3-tqdm
-
-# trainer
-Recommends:     python3-scikit-learn
 # xgboost not in fedora :/
 
 # server

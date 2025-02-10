@@ -1,0 +1,36 @@
+FROM fedora:latest
+
+RUN mkdir -p /app/copy
+RUN mkdir -p /app/bind
+
+COPY . /app/copy
+
+# TODO: something is missing for the pandas pkg
+#RUN dnf install -y \
+#    gcc \
+#    python3-devel \
+#    poetry \
+#    && dnf clean all
+
+RUN dnf install -y \
+    python3-pip \
+    python3-joblib \
+    python3-click \
+    python3-pandas \
+    python3-scikit-learn \
+    python3-numpy \
+    python3-tqdm \
+    python3-fedora-distro-aliases \
+    python3-uvicorn \
+    python3-starlette \
+    koji \
+    #&& dnf copr enable -y @copr/rpmeta \
+    #&& dnf install -y rpmeta \
+    && dnf clean all
+
+RUN pip3 install xgboost
+
+#WORKDIR /app/copy
+#RUN poetry install --all-extras
+
+WORKDIR /app
