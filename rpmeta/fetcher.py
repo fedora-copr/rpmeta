@@ -259,7 +259,10 @@ class CoprFetcher(Fetcher):
         for build_chroot in tqdm.tqdm(build_chroots):
             record = _parse_build_chroot(build_chroot)
             if record:
+                logger.info(f"Succesfully retrieved record for {record.nevra}")
                 result.append(record)
+            else:
+                logger.warning(f"Parsing for build chroot {build_chroot.id}")
 
         return result
 
