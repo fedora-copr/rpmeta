@@ -1,11 +1,13 @@
 %global desc %{expand:
-TODO long description
+RPMeta is a command-line tool designed to predict RPM build durations and manage related data.
+It provides a set of commands for training a predictive model, making predictions, fetching data,
+and serving a REST API endpoint.
 }
 
 Name:           rpmeta
 Version:        0.1
 Release:        %autorelease
-Summary:        TODO short description
+Summary:        Estimate duration of RPM package build
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/fedora-copr/%{name}

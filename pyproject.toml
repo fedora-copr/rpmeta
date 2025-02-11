@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "rpmeta"
 version = "0.1"
-description = "TODO"
+description = "Estimate duration of RPM package build"
 authors = ["Copr Team <copr-devel@lists.fedorahosted.org>"]
 maintainers = ["Copr Team <copr-devel@lists.fedorahosted.org>"]
 license = "GPLv3"
