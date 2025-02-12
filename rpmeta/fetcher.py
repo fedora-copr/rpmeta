@@ -54,7 +54,7 @@ class KojiFetcher(Fetcher):
         self._current_page = 0
         # keep it here so it fails right away if bodhi API is not available at the moment
         self._fedora_rawhide_number = max(
-            int(alias.version) for alias in get_distro_aliases()["fedora-all"]
+            int(alias.version_number) for alias in get_distro_aliases()["fedora-all"]
         )
 
     def _fetch_hw_info_from_koji(self, task_info: dict) -> Optional[HwInfo]:
@@ -65,7 +65,7 @@ class KojiFetcher(Fetcher):
 
         try:
             hw_info = HwInfo.parse_from_lscpu(
-                self._koji_session.downloadTaskOutput(task_id, "hw_info.log"),
+                self._koji_session.downloadTaskOutput(task_id, "hw_info.log").decode("utf-8"),
             )
             self._host_hw_info_map[task_info["host_id"]] = hw_info
             return hw_info
@@ -117,10 +117,10 @@ class KojiFetcher(Fetcher):
         for build in builds:
             logger.info(f"Fetching build: {build['nvr']}")
             try:
-                task_descendants = self._koji_session.getTaskDescendants(
+                task_descendents = self._koji_session.getTaskDescendents(
                     build["task_id"],
                 )[str(build["task_id"])]
-                for task_info in task_descendants:
+                for task_info in task_descendents:
                     # this is the task that produces the RPM, thus it has the hw_info.log needed
                     # for HwInfo dataclass
                     if task_info["method"] == "buildArch":

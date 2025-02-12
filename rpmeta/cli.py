@@ -142,14 +142,14 @@ def train(dataset_path: str, destination_path: str, random_state: int):
 @click.option(
     "-s",
     "--start-date",
-    type=Optional[DateTime(formats=["%Y-%m-%d"])],
+    type=DateTime(formats=["%Y-%m-%d"]),
     default=None,
     help="Start date for fetching data",
 )
 @click.option(
     "-e",
     "--end-date",
-    type=Optional[DateTime(formats=["%Y-%m-%d"])],
+    type=DateTime(formats=["%Y-%m-%d"]),
     default=None,
     help="End date for fetching data",
 )
