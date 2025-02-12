@@ -80,9 +80,47 @@ class Record:
     def build_duration(self) -> int:
         return self.end_ts - self.start_ts
 
+    def to_data_frame(self) -> dict:
+        """
+        Convert the record to dictionary that the trained model understands.
+        """
+        return {
+            "package_name": self.package_name,
+            "epoch": self.epoch,
+            "version": self.version,
+            "reslease": self.release,
+            "mock_chroot_name": self.mock_chroot_name,
+            "build_duration": self.build_duration,
+            **self.hw_info.to_dict(),
+        }
+
+    @classmethod
+    def from_data_frame(cls, data: dict) -> "Record":
+        """
+        Create a record from the dictionary that the trained model understands to the Record.
+        """
+        return cls(
+            package_name=data["package_name"],
+            epoch=data["epoch"],
+            version=data["version"],
+            release=data["release"],
+            mock_chroot_name=data["mock_chroot_name"],
+            start_ts=data["start_ts"],
+            end_ts=data["end_ts"],
+            hw_info=HwInfo(
+                cpu_model_name=data["cpu_model_name"],
+                cpu_arch=data["cpu_arch"],
+                cpu_model=data["cpu_model"],
+                cpu_cores=data["cpu_cores"],
+                ram=data["ram"],
+                swap=data["swap"],
+                bogomips=data["bogomips"],
+            ),
+        )
+
     def to_dict(self) -> dict:
         """
-        Convert the record to dictionary with only interesting fields for the models.
+        Convert the record to dictionary.
         """
         return {
             "package_name": self.package_name,
@@ -90,6 +128,7 @@ class Record:
             "version": self.version,
             "release": self.release,
             "mock_chroot_name": self.mock_chroot_name,
-            "build_duration": self.build_duration,
+            "start_ts": self.start_ts,
+            "end_ts": self.end_ts,
             "hw_info": self.hw_info.to_dict(),
         }

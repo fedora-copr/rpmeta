@@ -5,6 +5,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.routing import Route
 
+from rpmeta.dataset import Record
 from rpmeta.model import load_model, make_prediction
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ async def predict_endpoint(request: Request) -> JSONResponse:
         return PlainTextResponse("Invalid Content-Type", status_code=400)
 
     data = await request.json()
-    prediction, confidence = make_prediction(model, data)
+    prediction, confidence = make_prediction(model, Record.from_data_frame(data))
     return JSONResponse({"prediction": prediction, "confidence": confidence})
 
 

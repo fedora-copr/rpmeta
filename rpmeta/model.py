@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
 
+from rpmeta.dataset import Record
+
 
 def load_model(model_path: str) -> Pipeline:
     """
@@ -33,7 +35,7 @@ def save_model(model: Pipeline, model_path: str) -> None:
     joblib.dump(model, model_path)
 
 
-def make_prediction(model: Pipeline, input_data: dict) -> tuple[int, float]:
+def make_prediction(model: Pipeline, input_data: Record) -> tuple[int, float]:
     """
     Make prediction on the input data using the model.
 
@@ -45,7 +47,7 @@ def make_prediction(model: Pipeline, input_data: dict) -> tuple[int, float]:
         The prediction time in seconds and confidence - how much the model is sure about the
         prediction
     """
-    df = pd.DataFrame([input_data])
+    df = pd.DataFrame([input_data.to_data_frame()])
     prediction = model.predict(df, output_margin=True)
 
     std_dev = np.std(prediction)

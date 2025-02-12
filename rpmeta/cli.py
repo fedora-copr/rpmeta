@@ -9,6 +9,7 @@ from click import DateTime
 from click import Path as ClickPath
 
 from rpmeta.constants import HOST, PORT
+from rpmeta.dataset import Record
 from rpmeta.model import load_model, make_prediction
 
 logging.basicConfig()
@@ -92,7 +93,7 @@ def predict(data: str, model_path: str):
         input_data = json.loads(data)
 
     model = load_model(model_path)
-    prediction, confidence = make_prediction(model, input_data)
+    prediction, confidence = make_prediction(model, Record.from_data_frame(input_data))
     print(f"Prediction: {prediction}, Confidence: {confidence}")
 
 
@@ -192,7 +193,7 @@ def fetch_data(
 
     with open(path, "w") as f:
         logger.info(f"Saving data to: {path}")
-        json.dump(fetched_data, f, indent=4)
+        json.dump(fetched_data, f, indent=4, default=Record.to_dict)
         logger.info(f"Data saved to: {path}")
 
 
