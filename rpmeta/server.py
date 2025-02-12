@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from starlette.applications import Starlette
@@ -22,7 +23,12 @@ async def predict_endpoint(request: Request) -> JSONResponse:
 
     data = await request.json()
     logger.debug(f"Received data: {data}")
-    prediction, confidence = make_prediction(model, Record.from_data_frame(data))
+    # not actually async, but this way it won't block the starlette's event loop
+    prediction, confidence = await asyncio.to_thread(
+        make_prediction,
+        model,
+        Record.from_data_frame(data),
+    )
     return JSONResponse({"prediction": prediction, "confidence": confidence})
 
 
