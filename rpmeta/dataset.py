@@ -93,7 +93,7 @@ class Record:
             "package_name": self.package_name,
             "epoch": self.epoch,
             "version": self.version,
-            "reslease": self.release,
+            "release": self.release,
             "mock_chroot_name": self.mock_chroot_name,
             "build_duration": self.build_duration,
             **self.hw_info.to_dict(),
