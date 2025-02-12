@@ -92,6 +92,8 @@ def predict(data: str, model_path: str):
     else:
         input_data = json.loads(data)
 
+    logger.debug(f"Input data received: {input_data}")
+
     model = load_model(model_path)
     prediction, confidence = make_prediction(model, Record.from_data_frame(input_data))
     print(f"Prediction: {prediction}, Confidence: {confidence}")

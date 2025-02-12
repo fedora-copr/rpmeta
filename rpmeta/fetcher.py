@@ -64,9 +64,12 @@ class KojiFetcher(Fetcher):
             return self._host_hw_info_map[task_info["host_id"]]
 
         try:
-            hw_info = HwInfo.parse_from_lscpu(
-                self._koji_session.downloadTaskOutput(task_id, "hw_info.log").decode("utf-8"),
+            lscpu_log = self._koji_session.downloadTaskOutput(task_id, "hw_info.log").decode(
+                "utf-8",
             )
+            logger.debug(f"lscpu log for task: {task_id} - {lscpu_log}")
+
+            hw_info = HwInfo.parse_from_lscpu(lscpu_log)
             self._host_hw_info_map[task_info["host_id"]] = hw_info
             return hw_info
         except koji.GenericError:

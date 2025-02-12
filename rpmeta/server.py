@@ -21,6 +21,7 @@ async def predict_endpoint(request: Request) -> JSONResponse:
         return PlainTextResponse("Invalid Content-Type", status_code=400)
 
     data = await request.json()
+    logger.debug(f"Received data: {data}")
     prediction, confidence = make_prediction(model, Record.from_data_frame(data))
     return JSONResponse({"prediction": prediction, "confidence": confidence})
 

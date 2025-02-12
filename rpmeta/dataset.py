@@ -1,5 +1,8 @@
+import logging
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -18,6 +21,7 @@ class HwInfo:
 
     @classmethod
     def parse_from_lscpu(cls, content: str) -> "HwInfo":
+        logger.debug(f"lscpu output: {content}")
         hw_info = {}
         for line in content.splitlines():
             if line.startswith("Model name:"):
@@ -35,6 +39,7 @@ class HwInfo:
             elif line.startswith("BogoMIPS:"):
                 hw_info["bogomips"] = line.split(":")[1].strip()
 
+        logger.debug(f"Extracted hardware info: {hw_info}")
         return cls(**hw_info)
 
     def to_dict(self) -> dict:
@@ -99,6 +104,7 @@ class Record:
         """
         Create a record from the dictionary that the trained model understands to the Record.
         """
+        logger.debug(f"Creating Record from data: {data}")
         return cls(
             package_name=data["package_name"],
             epoch=data["epoch"],
