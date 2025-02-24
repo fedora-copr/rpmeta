@@ -107,8 +107,7 @@ class KojiFetcher(Fetcher):
             release=build["release"],
             epoch=build["epoch"] or 0,
             mock_chroot_name=mock_chroot_name,
-            start_ts=task_info["start_ts"],
-            end_ts=task_info["completion_ts"],
+            build_duration=task_info["completion_ts"] - task_info["start_ts"],
             hw_info=hw_info,
         )
 
@@ -227,8 +226,7 @@ class CoprFetcher(Fetcher):
                     version=version,
                     release=release,
                     mock_chroot_name=build_chroot.mock_chroot.name,
-                    start_ts=build_chroot.started_on,
-                    end_ts=build_chroot.ended_on,
+                    build_duration=build_chroot.ended_on - build_chroot.started_on,
                     hw_info=hw_info,
                 )
             except Exception as e:

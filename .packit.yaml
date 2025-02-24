@@ -3,6 +3,9 @@ specfile_path: dist/rpmeta.spec
 jobs:
   - job: copr_build
     trigger: pull_request
+    # TODO: dthis is due to check and xgboost, delete later
+    enable_net: True
+    osh_diff_scan_after_copr_build: False
     targets:
       - fedora-all
 
@@ -13,5 +16,8 @@ jobs:
     owner: "@copr"
     project: "rpmeta"
     branch: main
+    # TODO: dthis is due to check and xgboost, delete later
+    enable_net: True
+    osh_diff_scan_after_copr_build: False
     list_on_homepage: True
     preserve_project: True

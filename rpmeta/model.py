@@ -1,14 +1,16 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import joblib
-import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
 
-from rpmeta.dataset import Record
+from rpmeta.dataset import InputRecord
+
+if TYPE_CHECKING:
+    from sklearn.pipeline import Pipeline
 
 
-def load_model(model_path: str) -> Pipeline:
+def load_model(model_path: str) -> "Pipeline":
     """
     Load the model from the given path.
 
@@ -21,7 +23,7 @@ def load_model(model_path: str) -> Pipeline:
     return joblib.load(model_path)
 
 
-def save_model(model: Pipeline, model_path: str) -> None:
+def save_model(model: "Pipeline", model_path: str) -> None:
     """
     Save the model to the given path.
 
@@ -35,7 +37,7 @@ def save_model(model: Pipeline, model_path: str) -> None:
     joblib.dump(model, model_path)
 
 
-def make_prediction(model: Pipeline, input_data: Record) -> tuple[int, float]:
+def make_prediction(model: "Pipeline", input_data: InputRecord) -> int:
     """
     Make prediction on the input data using the model.
 
@@ -44,16 +46,8 @@ def make_prediction(model: Pipeline, input_data: Record) -> tuple[int, float]:
         input_data: The input data to make prediction on
 
     Returns:
-        The prediction time in seconds and confidence - how much the model is sure about the
-        prediction
+        The prediction time in seconds
     """
     df = pd.DataFrame([input_data.to_data_frame()])
     prediction = model.predict(df, output_margin=True)
-
-    std_dev = np.std(prediction)
-    if std_dev == 0:
-        confidence = 1
-    else:
-        confidence = (1 / (1 + np.exp(-prediction / std_dev)))[0].item()
-
-    return prediction[0].item(), confidence
+    return int(prediction[0].item())

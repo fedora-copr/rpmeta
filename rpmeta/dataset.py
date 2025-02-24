@@ -1,3 +1,9 @@
+# TODO: this will be useful if I decide to go with pydantic for validation, but that's too huge
+# dependency for this small thingy, so will I benefit from it? Other usage may be on copr's side
+# when working with the tool and parsing data like HW info and data for model. If neither of this
+# is the case, just drop the biolerplate and use plain dicsts
+
+
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -58,19 +64,13 @@ class HwInfo:
 
 
 @dataclass
-class Record:
-    """
-    A record of a successful build in build system in dataset.
-    """
-
+class InputRecord:
     package_name: str
     epoch: int
     version: str
     release: str
     # TODO: probably drop this since I can't parse every record
     mock_chroot_name: Optional[str]
-    start_ts: int
-    end_ts: int
     hw_info: HwInfo
 
     @property
@@ -81,38 +81,18 @@ class Record:
     def nvr(self) -> str:
         return f"{self.package_name}-{self.version}-{self.release}"
 
-    @property
-    def build_duration(self) -> int:
-        return self.end_ts - self.start_ts
-
-    def to_data_frame(self) -> dict:
-        """
-        Convert the record to dictionary that the trained model understands.
-        """
-        return {
-            "package_name": self.package_name,
-            "epoch": self.epoch,
-            "version": self.version,
-            "release": self.release,
-            "mock_chroot_name": self.mock_chroot_name,
-            "build_duration": self.build_duration,
-            **self.hw_info.to_dict(),
-        }
-
     @classmethod
-    def from_data_frame(cls, data: dict) -> "Record":
+    def from_data_frame(cls, data: dict) -> "InputRecord":
         """
         Create a record from the dictionary that the trained model understands to the Record.
         """
-        logger.debug(f"Creating Record from data: {data}")
+        logger.debug(f"Creating InputRecord from data: {data}")
         return cls(
             package_name=data["package_name"],
             epoch=data["epoch"],
             version=data["version"],
             release=data["release"],
             mock_chroot_name=data["mock_chroot_name"],
-            start_ts=data["start_ts"],
-            end_ts=data["end_ts"],
             hw_info=HwInfo(
                 cpu_model_name=data["cpu_model_name"],
                 cpu_arch=data["cpu_arch"],
@@ -124,9 +104,9 @@ class Record:
             ),
         )
 
-    def to_dict(self) -> dict:
+    def to_data_frame(self) -> dict:
         """
-        Convert the record to dictionary.
+        Convert the record to dictionary that the _trained model_ understands.
         """
         return {
             "package_name": self.package_name,
@@ -134,7 +114,23 @@ class Record:
             "version": self.version,
             "release": self.release,
             "mock_chroot_name": self.mock_chroot_name,
-            "start_ts": self.start_ts,
-            "end_ts": self.end_ts,
-            "hw_info": self.hw_info.to_dict(),
+            **self.hw_info.to_dict(),
+        }
+
+
+@dataclass
+class Record(InputRecord):
+    """
+    A record of a successful build in build system in dataset.
+    """
+
+    build_duration: int
+
+    def to_data_frame(self) -> dict:
+        """
+        Convert the record to dictionary that the model _to be trained_ understands.
+        """
+        return {
+            **super().to_data_frame(),
+            "build_duration": self.build_duration,
         }
