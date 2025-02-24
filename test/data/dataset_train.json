@@ -1,0 +1,36 @@
+[
+  {
+    "build_duration": 269,
+    "epoch": 0,
+    "hw_info": {
+      "bogomips": "4190.15",
+      "cpu_arch": "i686",
+      "cpu_cores": "6",
+      "cpu_model": "85",
+      "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
+      "ram": "15324516",
+      "swap": "8388604"
+    },
+    "mock_chroot_name": "fedora-41-i386",
+    "package_name": "rust-winit",
+    "release": "1.fc41",
+    "version": "0.30.8"
+  },
+  {
+    "build_duration": 208,
+    "epoch": 0,
+    "hw_info": {
+      "bogomips": "4190.15",
+      "cpu_arch": "x86_64",
+      "cpu_cores": "6",
+      "cpu_model": "85",
+      "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
+      "ram": "15324520",
+      "swap": "8388604"
+    },
+    "mock_chroot_name": "fedora-41-x86_64",
+    "package_name": "rust-winit",
+    "release": "1.fc41",
+    "version": "0.30.8"
+  }
+]

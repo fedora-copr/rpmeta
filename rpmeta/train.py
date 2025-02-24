@@ -46,9 +46,6 @@ class Trainer:
     def _preprocess_data(
         self,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-        self._df["build_duration"] = self._df["end_ts"] - self._df["start_ts"]
-        self._df.drop(columns=["end_ts", "start_ts"], inplace=True)
-
         self._df["build_duration"] = self._df["build_duration"].astype(
             int,
             errors="ignore",

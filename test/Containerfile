@@ -5,32 +5,15 @@ RUN mkdir -p /app/bind
 
 COPY . /app/copy
 
-# TODO: something is missing for the pandas pkg
-#RUN dnf install -y \
-#    gcc \
-#    python3-devel \
-#    poetry \
-#    && dnf clean all
-
 RUN dnf install -y \
-    python3-pip \
-    python3-joblib \
-    python3-click \
-    python3-pandas \
-    python3-scikit-learn \
-    python3-numpy \
-    python3-tqdm \
-    python3-fedora-distro-aliases \
-    python3-uvicorn \
-    python3-starlette \
-    koji \
-    #&& dnf copr enable -y @copr/rpmeta \
-    #&& dnf install -y rpmeta \
+    gcc \
+    krb5-config \
+    python3-devel \
+    uv \
     && dnf clean all
 
-RUN pip3 install xgboost
-
-#WORKDIR /app/copy
-#RUN poetry install --all-extras
+# TODO: copy not used now, delete or use as one time copy when e2e testing
+WORKDIR /app/copy
+RUN uv sync --all-extras --all-groups
 
 WORKDIR /app

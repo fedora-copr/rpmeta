@@ -1,0 +1,21 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install just to run tests in fedora container
+        run: |
+          sudo apt-get install -y just podman
+      - name: Run e2e tests
+        run: |
+          just test-e2e-in-container

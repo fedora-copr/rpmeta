@@ -9,7 +9,7 @@ from click import DateTime
 from click import Path as ClickPath
 
 from rpmeta.constants import HOST, PORT
-from rpmeta.dataset import Record
+from rpmeta.dataset import InputRecord, Record
 from rpmeta.model import load_model, make_prediction
 
 logging.basicConfig()
@@ -82,7 +82,14 @@ def serve(host: str, port: int, model_path: str):
     required=True,
     help="Path to the model file",
 )
-def predict(data: str, model_path: str):
+@click.option(
+    "--output-type",
+    type=click.Choice(["json", "text"], case_sensitive=False),
+    default="text",
+    show_default=True,
+    help="Output type for the prediction",
+)
+def predict(data: str, model_path: str, output_type: str):
     """
     Make single prediction on the input data
     """
@@ -95,8 +102,12 @@ def predict(data: str, model_path: str):
     logger.debug(f"Input data received: {input_data}")
 
     model = load_model(model_path)
-    prediction, confidence = make_prediction(model, Record.from_data_frame(input_data))
-    print(f"Prediction: {prediction}, Confidence: {confidence}")
+    prediction = make_prediction(model, InputRecord.from_data_frame(input_data))
+
+    if output_type == "json":
+        print(json.dumps({"prediction": prediction}))
+    else:
+        print(f"Prediction: {prediction}")
 
 
 @entry_point.command("train")
@@ -195,7 +206,7 @@ def fetch_data(
 
     with open(path, "w") as f:
         logger.info(f"Saving data to: {path}")
-        json.dump(fetched_data, f, indent=4, default=Record.to_dict)
+        json.dump(fetched_data, f, indent=4, default=Record.to_data_frame)
         logger.info(f"Data saved to: {path}")
 
 
