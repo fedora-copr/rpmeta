@@ -1,5 +1,7 @@
+import getpass
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -170,9 +172,8 @@ def train(dataset_path: str, destination_path: str, random_state: int):
 @click.option(
     "--is-copr-instance",
     is_flag=True,
-    default=False,
     help=(
-        "If script is running on Copr instance (e.g, Copr container instance), include this flag"
+        "If script is running on Copr instance (e.g. Copr container instance), include this flag"
     ),
 )
 @click.option("--koji", is_flag=True, help="Fetch data from Koji")
@@ -194,6 +195,13 @@ def fetch_data(
 
     if not copr and is_copr_instance:
         raise click.UsageError("Flag --is-copr-instance can only be used with --copr")
+
+    if copr and is_copr_instance and (os.getuid() == 0 or getpass.getuser() != "copr-fe"):
+        logger.error("CoprFetcher should be run as the 'copr-fe' user inside Copr instance")
+        raise click.UsageError(
+            "CoprFetcher should be run as the 'copr-fe' user. Please run:\n"
+            "$ sudo -u copr-fe rpmeta fetch-data ...",
+        )
 
     fetched_data = []
     if koji:
