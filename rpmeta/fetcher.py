@@ -2,11 +2,13 @@ import gzip
 import logging
 import os
 import re
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional
 
 import koji
+import requests
 import tqdm
 from fedora_distro_aliases import get_distro_aliases
 
@@ -14,6 +16,23 @@ from rpmeta.constants import KOJI_HUB_URL
 from rpmeta.dataset import HwInfo, Record
 
 logger = logging.getLogger(__name__)
+
+
+def _get_distro_aliases_retry(retries=5, delay=20) -> dict:
+    """
+    Retries a few times if the Bodhi API is unavailable before failing.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            return get_distro_aliases()
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"Attempt {attempt}/{retries} failed: {e}")
+            if attempt < retries:
+                time.sleep(delay)
+                continue
+
+    logging.error("Failed to fetch Fedora Rawhide number after multiple attempts.")
+    raise
 
 
 class Fetcher(ABC):
@@ -54,7 +73,7 @@ class KojiFetcher(Fetcher):
         self._current_page = 0
         # keep it here so it fails right away if bodhi API is not available at the moment
         self._fedora_rawhide_number = max(
-            int(alias.version_number) for alias in get_distro_aliases()["fedora-all"]
+            int(alias.version_number) for alias in _get_distro_aliases_retry()["fedora-all"]
         )
 
     def _fetch_hw_info_from_koji(self, task_info: dict) -> Optional[HwInfo]:
