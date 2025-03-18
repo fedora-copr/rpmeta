@@ -1,4 +1,3 @@
-import gzip
 import logging
 import os
 import re
@@ -10,6 +9,8 @@ from typing import Optional
 import koji
 import requests
 import tqdm
+from copr.v3 import Client
+from copr.v3.pagination import next_page
 from fedora_distro_aliases import get_distro_aliases
 
 from rpmeta.constants import KOJI_HUB_URL
@@ -40,9 +41,18 @@ class Fetcher(ABC):
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        limit: int = 10000,
     ) -> None:
-        self.start_date = start_date
-        self.end_date = end_date
+        self.start_date = None
+        if start_date:
+            self.start_date = int(start_date.timestamp())
+
+        if end_date:
+            self.end_date = int(end_date.timestamp())
+        else:
+            self.end_date = int(datetime.now().timestamp())
+
+        self.limit = limit
 
     @abstractmethod
     def fetch_data(self) -> list[Record]:
@@ -62,9 +72,7 @@ class KojiFetcher(Fetcher):
         end_date: Optional[datetime] = None,
         limit: int = 10000,
     ) -> None:
-        super().__init__(start_date, end_date)
-
-        self._limit = limit
+        super().__init__(start_date, end_date, limit)
 
         logger.info(f"Initializing KojiFetcher instance: {KOJI_HUB_URL}")
         self._koji_session = koji.ClientSession(KOJI_HUB_URL)
@@ -160,17 +168,17 @@ class KojiFetcher(Fetcher):
             try:
                 time_params = {}
                 if self.start_date:
-                    time_params["createdAfter"] = self.start_date.timestamp()
+                    time_params["createdAfter"] = self.start_date
 
                 if self.end_date:
-                    time_params["createdBefore"] = self.end_date.timestamp()
+                    time_params["createdBefore"] = self.end_date
 
                 logger.info(f"Fetching page {self._current_page} of builds...")
                 builds = self._koji_session.listBuilds(
                     state=koji.BUILD_STATES["COMPLETE"],
                     queryOpts={
-                        "limit": self._limit,
-                        "offset": self._current_page * self._limit,
+                        "limit": self.limit,
+                        "offset": self._current_page * self.limit,
                         "order": "-completion_ts",
                     },
                     **time_params,
@@ -198,61 +206,18 @@ class CoprFetcher(Fetcher):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         is_copr_instance: bool = False,
+        limit: int = 10000,
     ) -> None:
-        super().__init__(start_date, end_date)
+        super().__init__(start_date, end_date, limit)
         self.is_copr_instance = is_copr_instance
+        self.client = Client({"copr_url": "https://copr.fedorainfracloud.org"})
 
     def _fetch_copr_data_from_instance(self) -> list[Record]:
         from copr_common.enums import StatusEnum
         from coprs import models
         from coprs.logic.builds_logic import BuildChrootsLogic
 
-        # TODO: something will move from this scope once the other fetcher is implemented
-        def _fetch_hw_info_from_copr_instance(path_to_hw_info: str) -> Optional[HwInfo]:
-            try:
-                if not path_to_hw_info or not os.path.exists(path_to_hw_info):
-                    return None
-
-                with gzip.open(path_to_hw_info, "r") as f:
-                    file_content = f.read()
-                    return HwInfo.parse_from_lscpu(file_content.decode("utf-8"))
-            except Exception as e:
-                logger.error(f"Failed to fetch hw_info from Copr instance: {e!s}")
-                return None
-
-        def _parse_build_chroot(build_chroot: models.BuildChroot) -> Optional[Record]:
-            try:
-                pkg_version = build_chroot.build.pkg_version
-                epoch = pkg_version.split(":")[0] if ":" in pkg_version else 0
-                version = pkg_version.split(":")[-1].split("-")[0]
-                release = pkg_version.split("-")[-1]
-
-                # TODO: function for this, or make it public...
-                path_to_hw_info = build_chroot._compressed_log_variant("hw_info.log", [])
-                if path_to_hw_info:
-                    path_to_hw_info = path_to_hw_info.replace("http://backend_httpd:5002", "")
-                    hw_info = _fetch_hw_info_from_copr_instance(path_to_hw_info)
-                else:
-                    return None
-
-                if hw_info is None:
-                    logger.error(f"Failed to fetch hw_info for build_chroot: {build_chroot.id}")
-                    return None
-
-                return Record(
-                    package_name=build_chroot.build.package.name,
-                    epoch=epoch,
-                    version=version,
-                    release=release,
-                    mock_chroot_name=build_chroot.mock_chroot.name,
-                    build_duration=build_chroot.ended_on - build_chroot.started_on,
-                    hw_info=hw_info,
-                )
-            except Exception as e:
-                logger.error(f"Failed to parse Copr build_chroot: {e!s}")
-                return None
-
-        build_chroots = (
+        build_chroots_query = (
             BuildChrootsLogic.get_multiply()
             .filter(
                 models.BuildChroot.status == StatusEnum("succeeded"),
@@ -265,6 +230,7 @@ class CoprFetcher(Fetcher):
             )
             .filter(
                 models.BuildChroot.ended_on.is_not(None),
+                models.BuildChroot.ended_on <= self.end_date,
             )
             .filter(
                 models.Copr.deleted.is_(False),
@@ -272,21 +238,179 @@ class CoprFetcher(Fetcher):
             .filter(
                 models.MockChroot.is_active.is_(True),
             )
-            .all()
         )
 
+        if self.start_date:
+            build_chroots_query = build_chroots_query.filter(
+                models.BuildChroot.ended_on >= self.start_date,
+            )
+
+        build_chroots = build_chroots_query.all()
         result = []
         for build_chroot in tqdm.tqdm(build_chroots):
-            record = _parse_build_chroot(build_chroot)
+            if not build_chroot.result_dir_url:
+                logger.error(
+                    f"Failed to fetch path_to_hw_info for build_chroot: {build_chroot.id}",
+                )
+                continue
+
+            record = CoprFetcher._parse_build_chroot(
+                pkg_name=build_chroot.build.package.name,
+                pkg_version=build_chroot.build.pkg_version,
+                mock_chroot_name=build_chroot.mock_chroot.name,
+                result_dir_url=build_chroot.result_dir_url,
+                build_duration=build_chroot.ended_on - build_chroot.started_on,
+            )
             if record:
                 logger.info(f"Succesfully retrieved record for {record.nevra}")
                 result.append(record)
             else:
-                logger.warning(f"Parsing for build chroot {build_chroot.id}")
+                logger.warning(f"Parsing for build chroot {build_chroot.id} failed")
 
+        return result
+
+    @staticmethod
+    def _parse_build_chroot(
+        pkg_name: str,
+        pkg_version: str,
+        mock_chroot_name: str,
+        result_dir_url: str,
+        build_duration: int,
+    ) -> Optional[Record]:
+        try:
+            url_to_hw_info = CoprFetcher._get_url_to_hw_info_log(result_dir_url)
+            logger.debug(f"URL to hw_info: {url_to_hw_info}")
+            if url_to_hw_info.startswith("http://backend_httpd:5002"):
+                # Copr instance is running in a container, replace the URL then to real copr
+                logger.debug(
+                    f"Replacing URL to hw_info: {url_to_hw_info} for Copr instance",
+                )
+                url_to_hw_info = url_to_hw_info.replace(
+                    "http://backend_httpd:5002",
+                    "https://download.copr.fedorainfracloud.org",
+                )
+                logger.debug(f"Replaced URL to hw_info: {url_to_hw_info}")
+
+            logger.debug(f"Fetching hw_info from: {url_to_hw_info}")
+            hw_info = CoprFetcher._fetch_hw_info_from_copr(url_to_hw_info)
+
+            if hw_info is None:
+                logger.error("Failed to fetch hw_info")
+                return None
+
+            epoch, version, release = CoprFetcher._evr_from_pkg_version(pkg_version)
+            return Record(
+                package_name=pkg_name,
+                epoch=epoch,
+                version=version,
+                release=release,
+                mock_chroot_name=mock_chroot_name,
+                build_duration=build_duration,
+                hw_info=hw_info,
+            )
+        except Exception as e:
+            logger.error(f"Failed to parse Copr build_chroot: {e!s}")
+            return None
+
+    @staticmethod
+    def _evr_from_pkg_version(pkg_version: str) -> tuple[int, str, str]:
+        epoch = int(pkg_version.split(":")[0]) if ":" in pkg_version else 0
+        version = pkg_version.split(":")[-1].split("-")[0]
+        release = pkg_version.split("-")[-1]
+        return epoch, version, release
+
+    @staticmethod
+    def _fetch_hw_info_from_copr(url_to_hw_info: str) -> Optional[HwInfo]:
+        try:
+            response = requests.get(url_to_hw_info)
+            response.raise_for_status()
+            return HwInfo.parse_from_lscpu(response.content.decode("utf-8"))
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch hw_info from Copr instance: {e!s}")
+        except OSError as e:
+            logger.error(f"Failed to read hw_info.log: {e!s}")
+
+        return None
+
+    @staticmethod
+    def _get_url_to_hw_info_log(result_dir_url: str) -> str:
+        return os.path.join(result_dir_url, "hw_info.log.gz")
+
+    def _get_records_from_project(self, project: dict) -> Optional[list[Record]]:
+        builds = self.client.build_proxy.get_list(
+            ownername=project["ownername"],
+            projectname=project["name"],
+        )
+        if not builds:
+            logger.info(f"No builds for project: {project['full_name']} found")
+            return []
+
+        records = []
+        for build in builds:
+            if build["ended_on"] is None or build["ended_on"] > self.end_date:
+                logger.info(f"Skipping build: {build['id']} as it's newer than end_date")
+                continue
+
+            if self.start_date and build["ended_on"] < self.start_date:
+                logger.info(f"Skipping build: {build['id']} as it's older than start_date")
+                return None
+
+            build_chroots = self.client.build_chroot_proxy.get_list(build_id=build["id"])
+            if not build_chroots:
+                logger.info(f"No build_chroots for build: {build['id']} found")
+                continue
+
+            for build_chroot in build_chroots:
+                if build_chroot["state"] != "succeeded":
+                    continue
+
+                record = self._parse_build_chroot(
+                    pkg_name=build["source_package"]["name"],
+                    pkg_version=build["source_package"]["version"],
+                    mock_chroot_name=build_chroot["name"],
+                    result_dir_url=build_chroot["result_url"],
+                    build_duration=build_chroot["ended_on"] - build_chroot["started_on"],
+                )
+                if record:
+                    logger.info(f"Succesfully retrieved record for {record.nevra}")
+                    records.append(record)
+                else:
+                    logger.warning(
+                        f"Parsing for build chroot {build_chroot['name']} for "
+                        f"build id: {build['id']} failed",
+                    )
+
+        return records
+
+    def _fetch_copr_data_from_api(self) -> list[Record]:
+        pagination = {"limit": self.limit, "order": "id", "order_type": "DESC"}
+        projects_page = self.client.project_proxy.get_list(pagination=pagination)
+        result: list[Record] = []
+
+        while projects_page:
+            for project in projects_page:
+                if project.get("name") is None or project.get("ownername") is None:
+                    logger.error(f"Skipping project with missing name or ownername: {project}")
+                    continue
+
+                logger.info(f"Fetching builds for project: {project['full_name']}")
+                records = self._get_records_from_project(project)
+                if records is None:
+                    # end of date range reached
+                    return result
+
+                result.extend(records)
+
+            projects_page = next_page(projects_page)
+
+        # last page
         return result
 
     def fetch_data(self) -> list[Record]:
         if self.is_copr_instance:
-            return self._fetch_copr_data_from_instance()
-        raise NotImplementedError("CoprFetcher is not implemented yet")
+            from coprs import app
+
+            with app.app_context():
+                return self._fetch_copr_data_from_instance()
+
+        return self._fetch_copr_data_from_api()
