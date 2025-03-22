@@ -111,18 +111,35 @@ class KojiFetcher(Fetcher):
             logger.error(f"Failed to fetch hw_info for task: {task_id} - {e!s}")
             return None
 
-    def _fetch_dataset_record(self, build: dict, task_info: dict) -> Optional[Record]:
-        mock_chroot_name = None
-        regex = re.search(r"\.fc(\d{2})", build["release"])
-        if regex:
-            fedora_version = regex.group(1)
+    def _get_chroot_from_release(self, release: str, arch: str) -> Optional[str]:
+        match = None
+        # searches for strings like "X.fcXX"
+        regex_fc = re.search(r"\.fc(\d{2})", release)
+        if regex_fc:
+            fedora_version = regex_fc.group(1)
             if int(fedora_version) == self._fedora_rawhide_number:
                 fedora_version = "rawhide"
 
-            mock_chroot_name = f"fedora-{fedora_version}-{task_info['arch']}"
-            logger.info(f"Mock chroot name: {mock_chroot_name} for build: {build['nvr']}")
-        else:
-            logger.error(f"Failed to parse Fedora version from release: {build['release']}")
+            match = f"fedora-{fedora_version}"
+
+        # searches for strings like "X.elnX"
+        regex_eln = re.search(r"\.eln\d+", release)
+        if regex_eln:
+            match = "fedora-eln"
+
+        # searches for strings like "X.elX(_X)"
+        regex_epel = re.search(r"\.el(\d+)(?:_\d+)?", release)
+        if regex_epel:
+            match = f"epel-{regex_epel.group(1)}"
+
+        if match is not None:
+            return f"{match}-{arch}"
+
+        logger.error(f"Failed to parse chroot from release: {release}")
+        return None
+
+    def _fetch_dataset_record(self, build: dict, task_info: dict) -> Optional[Record]:
+        mock_chroot_name = self._get_chroot_from_release(build["release"], build["arch"])
 
         hw_info = self._fetch_hw_info_from_koji(task_info)
         if not hw_info:
