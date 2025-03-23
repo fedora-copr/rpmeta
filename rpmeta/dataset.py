@@ -20,15 +20,15 @@ class HwInfo:
     cpu_model_name: str
     cpu_arch: str
     cpu_model: str
-    cpu_cores: str
-    ram: str
-    swap: str
-    bogomips: str
+    cpu_cores: int
+    ram: int
+    swap: int
+    bogomips: float
 
     @classmethod
     def parse_from_lscpu(cls, content: str) -> "HwInfo":
         logger.debug(f"lscpu output: {content}")
-        hw_info = {}
+        hw_info: dict[str, float | int | str] = {}
         for line in content.splitlines():
             if line.startswith("Model name:"):
                 hw_info["cpu_model_name"] = line.split(":")[1].strip()
@@ -37,16 +37,16 @@ class HwInfo:
             elif line.startswith("Model:"):
                 hw_info["cpu_model"] = line.split(":")[1].strip()
             elif line.startswith("CPU(s):"):
-                hw_info["cpu_cores"] = line.split(":")[1].strip()
+                hw_info["cpu_cores"] = int(line.split(":")[1].strip())
             elif line.startswith("Mem:"):
-                hw_info["ram"] = line.split()[1]
+                hw_info["ram"] = int(line.split()[1])
             elif line.startswith("Swap:"):
-                hw_info["swap"] = line.split()[1]
+                hw_info["swap"] = int(line.split()[1])
             elif line.startswith("BogoMIPS:"):
-                hw_info["bogomips"] = line.split(":")[1].strip()
+                hw_info["bogomips"] = float(line.split(":")[1].strip())
 
         logger.debug(f"Extracted hardware info: {hw_info}")
-        return cls(**hw_info)
+        return cls(**hw_info)  # type: ignore
 
     def to_dict(self) -> dict:
         """

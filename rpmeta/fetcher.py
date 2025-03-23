@@ -151,7 +151,7 @@ class KojiFetcher(Fetcher):
             release=build["release"],
             epoch=build["epoch"] or 0,
             mock_chroot_name=mock_chroot_name,
-            build_duration=task_info["completion_ts"] - task_info["start_ts"],
+            build_duration=int(task_info["completion_ts"] - task_info["start_ts"]),
             hw_info=hw_info,
         )
 
@@ -276,7 +276,7 @@ class CoprFetcher(Fetcher):
                 pkg_version=build_chroot.build.pkg_version,
                 mock_chroot_name=build_chroot.mock_chroot.name,
                 result_dir_url=build_chroot.result_dir_url,
-                build_duration=build_chroot.ended_on - build_chroot.started_on,
+                build_duration=int(build_chroot.ended_on - build_chroot.started_on),
             )
             if record:
                 logger.info(f"Succesfully retrieved record for {record.nevra}")
@@ -386,7 +386,7 @@ class CoprFetcher(Fetcher):
                     pkg_version=build["source_package"]["version"],
                     mock_chroot_name=build_chroot["name"],
                     result_dir_url=build_chroot["result_url"],
-                    build_duration=build_chroot["ended_on"] - build_chroot["started_on"],
+                    build_duration=int(build_chroot["ended_on"] - build_chroot["started_on"]),
                 )
                 if record:
                     logger.info(f"Succesfully retrieved record for {record.nevra}")
