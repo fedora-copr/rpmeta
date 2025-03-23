@@ -139,11 +139,11 @@ class KojiFetcher(Fetcher):
         return None
 
     def _fetch_dataset_record(self, build: dict, task_info: dict) -> Optional[Record]:
-        mock_chroot_name = self._get_chroot_from_release(build["release"], task_info["arch"])
-
         hw_info = self._fetch_hw_info_from_koji(task_info)
         if not hw_info:
             return None
+
+        mock_chroot_name = self._get_chroot_from_release(build["release"], hw_info.cpu_arch)
 
         return Record(
             package_name=build["package_name"],
