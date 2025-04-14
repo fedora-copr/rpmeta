@@ -23,12 +23,12 @@ class HwInfo:
     cpu_cores: int
     ram: int
     swap: int
-    bogomips: float
+    bogomips: int
 
     @classmethod
     def parse_from_lscpu(cls, content: str) -> "HwInfo":
         logger.debug(f"lscpu output: {content}")
-        hw_info: dict[str, float | int | str] = {}
+        hw_info: dict[str, int | str] = {}
         for line in content.splitlines():
             if line.startswith("Model name:"):
                 hw_info["cpu_model_name"] = line.split(":")[1].strip()
@@ -43,7 +43,7 @@ class HwInfo:
             elif line.startswith("Swap:"):
                 hw_info["swap"] = int(line.split()[1])
             elif line.startswith("BogoMIPS:"):
-                hw_info["bogomips"] = float(line.split(":")[1].strip())
+                hw_info["bogomips"] = int(line.split(":")[1].strip())
 
         logger.debug(f"Extracted hardware info: {hw_info}")
         return cls(**hw_info)  # type: ignore
@@ -70,7 +70,7 @@ class InputRecord:
     version: str
     release: str
     # TODO: probably drop this since I can't parse every record
-    mock_chroot_name: Optional[str]
+    mock_chroot: Optional[str]
     hw_info: HwInfo
 
     @property
@@ -92,7 +92,7 @@ class InputRecord:
             epoch=data["epoch"],
             version=data["version"],
             release=data["release"],
-            mock_chroot_name=data["mock_chroot_name"],
+            mock_chroot=data["mock_chroot"],
             hw_info=HwInfo(
                 cpu_model_name=data["cpu_model_name"],
                 cpu_arch=data["cpu_arch"],
@@ -113,7 +113,7 @@ class InputRecord:
             "epoch": self.epoch,
             "version": self.version,
             "release": self.release,
-            "mock_chroot_name": self.mock_chroot_name,
+            "mock_chroot": self.mock_chroot,
             **self.hw_info.to_dict(),
         }
 

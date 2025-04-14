@@ -5,7 +5,7 @@
   "cpu_model": "85",
   "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
   "epoch": 0,
-  "mock_chroot_name": "fedora-41-x86_64",
+  "mock_chroot": "fedora-41-x86_64",
   "package_name": "rust-winit",
   "ram": "15324520",
   "release": "1.fc41",

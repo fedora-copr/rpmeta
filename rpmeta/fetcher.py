@@ -143,14 +143,14 @@ class KojiFetcher(Fetcher):
         if not hw_info:
             return None
 
-        mock_chroot_name = self._get_chroot_from_release(build["release"], hw_info.cpu_arch)
+        mock_chroot = self._get_chroot_from_release(build["release"], hw_info.cpu_arch)
 
         return Record(
             package_name=build["package_name"],
             version=build["version"],
             release=build["release"],
             epoch=build["epoch"] or 0,
-            mock_chroot_name=mock_chroot_name,
+            mock_chroot=mock_chroot,
             build_duration=int(task_info["completion_ts"] - task_info["start_ts"]),
             hw_info=hw_info,
         )
@@ -274,7 +274,7 @@ class CoprFetcher(Fetcher):
             record = CoprFetcher._parse_build_chroot(
                 pkg_name=build_chroot.build.package.name,
                 pkg_version=build_chroot.build.pkg_version,
-                mock_chroot_name=build_chroot.mock_chroot.name,
+                mock_chroot=build_chroot.mock_chroot.name,
                 result_dir_url=build_chroot.result_dir_url,
                 build_duration=int(build_chroot.ended_on - build_chroot.started_on),
             )
@@ -290,7 +290,7 @@ class CoprFetcher(Fetcher):
     def _parse_build_chroot(
         pkg_name: str,
         pkg_version: str,
-        mock_chroot_name: str,
+        mock_chroot: str,
         result_dir_url: str,
         build_duration: int,
     ) -> Optional[Record]:
@@ -321,7 +321,7 @@ class CoprFetcher(Fetcher):
                 epoch=epoch,
                 version=version,
                 release=release,
-                mock_chroot_name=mock_chroot_name,
+                mock_chroot=mock_chroot,
                 build_duration=build_duration,
                 hw_info=hw_info,
             )
@@ -384,7 +384,7 @@ class CoprFetcher(Fetcher):
                 record = self._parse_build_chroot(
                     pkg_name=build["source_package"]["name"],
                     pkg_version=build["source_package"]["version"],
-                    mock_chroot_name=build_chroot["name"],
+                    mock_chroot=build_chroot["name"],
                     result_dir_url=build_chroot["result_url"],
                     build_duration=int(build_chroot["ended_on"] - build_chroot["started_on"]),
                 )

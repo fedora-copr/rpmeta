@@ -11,7 +11,7 @@
       "ram": "15324516",
       "swap": "8388604"
     },
-    "mock_chroot_name": "fedora-41-i386",
+    "mock_chroot": "fedora-41-i386",
     "package_name": "rust-winit",
     "release": "1.fc41",
     "version": "0.30.8"
@@ -28,7 +28,7 @@
       "ram": "15324520",
       "swap": "8388604"
     },
-    "mock_chroot_name": "fedora-41-x86_64",
+    "mock_chroot": "fedora-41-x86_64",
     "package_name": "rust-winit",
     "release": "1.fc41",
     "version": "0.30.8"

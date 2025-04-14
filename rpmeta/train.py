@@ -36,7 +36,7 @@ class Trainer:
             "epoch",
             "version",
             "release",
-            "mock_chroot_name",
+            "mock_chroot",
             "cpu_model",
             "cpu_arch",
             "cpu_model_name",
