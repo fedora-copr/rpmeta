@@ -3,7 +3,6 @@
     "build_duration": 269,
     "epoch": 0,
     "hw_info": {
-      "bogomips": "4190.15",
       "cpu_arch": "i686",
       "cpu_cores": "6",
       "cpu_model": "85",
@@ -20,7 +19,6 @@
     "build_duration": 208,
     "epoch": 0,
     "hw_info": {
-      "bogomips": "4190.15",
       "cpu_arch": "x86_64",
       "cpu_cores": "6",
       "cpu_model": "85",

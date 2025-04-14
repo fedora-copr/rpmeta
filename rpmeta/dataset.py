@@ -23,7 +23,6 @@ class HwInfo:
     cpu_cores: int
     ram: int
     swap: int
-    bogomips: int
 
     @classmethod
     def parse_from_lscpu(cls, content: str) -> "HwInfo":
@@ -42,8 +41,6 @@ class HwInfo:
                 hw_info["ram"] = int(line.split()[1])
             elif line.startswith("Swap:"):
                 hw_info["swap"] = int(line.split()[1])
-            elif line.startswith("BogoMIPS:"):
-                hw_info["bogomips"] = int(line.split(":")[1].strip())
 
         logger.debug(f"Extracted hardware info: {hw_info}")
         return cls(**hw_info)  # type: ignore
@@ -59,7 +56,6 @@ class HwInfo:
             "cpu_cores": self.cpu_cores,
             "ram": self.ram,
             "swap": self.swap,
-            "bogomips": self.bogomips,
         }
 
 
@@ -100,7 +96,6 @@ class InputRecord:
                 cpu_cores=data["cpu_cores"],
                 ram=data["ram"],
                 swap=data["swap"],
-                bogomips=data["bogomips"],
             ),
         )
 

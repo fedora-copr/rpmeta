@@ -41,7 +41,7 @@ class Trainer:
             "cpu_arch",
             "cpu_model_name",
         ]
-        self._numerical_features = ["cpu_cores", "ram", "swap", "bogomips"]
+        self._numerical_features = ["cpu_cores", "ram", "swap"]
 
     def _preprocess_data(
         self,
@@ -69,14 +69,6 @@ class Trainer:
         )
         self._df["ram"] = self._df["hw_info"].apply(lambda x: x["ram"] if x else None)
         self._df["swap"] = self._df["hw_info"].apply(lambda x: x["swap"] if x else None)
-        self._df["bogomips"] = self._df["hw_info"].apply(
-            lambda x: x["bogomips"] if x else None,
-        )
-
-        # get rid of empty string
-        self._df["bogomips"] = self._df["hw_info"].apply(
-            lambda x: None if not x or not x.get("bogomips") else x["bogomips"],
-        )
 
         # drop these, no longer needed
         self._df.drop(
@@ -94,7 +86,6 @@ class Trainer:
                 "cpu_cores",
                 "ram",
                 "swap",
-                "bogomips",
             ],
             inplace=True,
         )
@@ -102,7 +93,6 @@ class Trainer:
         self._df["cpu_cores"] = self._df["cpu_cores"].astype(int)
         self._df["ram"] = self._df["ram"].astype(int)
         self._df["swap"] = self._df["swap"].astype(int)
-        self._df["bogomips"] = self._df["bogomips"].astype(float)
 
         self._df = self._df.drop_duplicates()
 
