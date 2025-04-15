@@ -1,4 +1,4 @@
-specfile_path: dist/rpmeta.spec
+specfile_path: files/rpmeta.spec
 
 jobs:
   - job: copr_build
