@@ -1,6 +1,6 @@
 ## rpmeta: RPM Estimated Time of (build) Arrival
 
-**RPMeta** is a command-line tool designed to **predict RPM build durations** and manage related
+**RPMETA** is a command-line tool designed to **predict RPM build durations** and manage related
 data. It provides a set of commands for training a predictive model, making predictions,
 fetching data, and serving a REST API endpoint.
 
@@ -28,6 +28,13 @@ Or from the source:
 pipx install git+https://github.com/fedora-copr/rpmeta.git
 ```
 
+However, since pip cannot distribute UNIX manpages, if you want them available, you need
+to install them manually via:
+
+```bash
+click-man rpmeta --target <path-to-mandir>/man1
+```
+
 ---
 
 #### Usage
@@ -42,4 +49,10 @@ For detailed information about a specific command, run:
 
 ```bash
 rpmeta <command> --help
+```
+
+To see the whole documentation at once, use manpages:
+
+```bash
+man 1 rpmeta(-SUBCOMMANDS)?
 ```
