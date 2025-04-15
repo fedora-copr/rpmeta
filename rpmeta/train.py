@@ -21,10 +21,8 @@ class Trainer:
         self,
         dataset_path: str,
         test_size: float = 0.2,
-        random_state: int = 42,
     ) -> None:
         self._test_size = test_size
-        self._random_state = random_state
 
         if not Path(dataset_path).exists():
             raise FileNotFoundError(f"Dataset file {dataset_path} not found")
@@ -103,7 +101,7 @@ class Trainer:
             x,
             y,
             test_size=self._test_size,
-            random_state=self._random_state,
+            random_state=42,
         )
         return x_train, x_test, y_train, y_test
 
@@ -125,7 +123,7 @@ class Trainer:
         model_xgb = XGBRegressor(
             n_estimators=100,
             learning_rate=0.1,
-            random_state=self._random_state,
+            random_state=42,
             max_depth=6,
         )
 

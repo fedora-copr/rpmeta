@@ -13,7 +13,7 @@ def test_train(trained_model):
 
 def test_predict(trained_model):
     dataset_path = Path(__file__).parent.parent / "data" / "dataset_predict.json"
-    cmd = ["predict", "--model-path", str(trained_model), "--data", str(dataset_path)]
+    cmd = ["predict", "--model", str(trained_model), "--data", str(dataset_path)]
 
     result = run_rpmeta_cli([*cmd, "--output-type", "json"])
 

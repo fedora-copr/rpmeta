@@ -17,6 +17,7 @@ BuildArch:      noarch
 
 BuildRequires:  python3-devel
 BuildRequires:  python3-rpm-macros
+BuildRequires:  python3dist(click-man)
 
 # test dependencies
 BuildRequires:  python3-pytest
@@ -87,6 +88,9 @@ predictions.
 %install
 %pyproject_install
 %pyproject_save_files %{name}
+
+# generate man 1 pages
+PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildroot}%{_mandir}/man1
 
 
 %check

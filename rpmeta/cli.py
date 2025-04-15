@@ -32,7 +32,7 @@ def _get_context_settings() -> dict[str, Any]:
 )
 def entry_point(debug: bool):
     """
-    Integration scripts for the RPM build prediction tool
+    Predict build time duration of an RPM build based on available hardware resources.
     """
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -50,20 +50,41 @@ def entry_point(debug: bool):
 )
 @click.option(
     "-m",
-    "--model-path",
+    "--model",
     type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
     required=True,
-    help="Path to the model file",
+    help="Path (URL or Linux path) to the model file",
 )
-def serve(host: str, port: int, model_path: str):
+def serve(host: str, port: int, model: str):
     """
-    Start the API server
+    Start the API server on specified host and port.
+
+    The server will accept HTTP GET requests with JSON payloads containing the input data in
+    format:
+        {
+            "cpu_model_name": "AMD Ryzen 7 PRO 7840HS",
+            "cpu_arch": "x86_64",
+            "cpu_model": "116",
+            "cpu_cores": 8,
+            "ram": 123456789,
+            "swap": 123456789,
+            "package_name": "example-package",
+            "epoch": 0,
+            "version": "1.0.0",
+            "mock_chroot": "fedora-42-x86_64"
+        }
+
+    The server will return a JSON response with the predicted build time duration in seconds in
+    format:
+        {
+            "prediction": 1234
+        }
     """
     import uvicorn
 
     from rpmeta.server import app, reload_model
 
-    reload_model(model_path)
+    reload_model(model)
 
     logger.info(f"Serving on: {host}:{port}")
     uvicorn.run(app, host=host, port=port)
@@ -79,10 +100,10 @@ def serve(host: str, port: int, model_path: str):
 )
 @click.option(
     "-m",
-    "--model-path",
+    "--model",
     type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
     required=True,
-    help="Path to the model file",
+    help="Path (URL or Linux path) to the model file",
 )
 @click.option(
     "--output-type",
@@ -91,9 +112,28 @@ def serve(host: str, port: int, model_path: str):
     show_default=True,
     help="Output type for the prediction",
 )
-def predict(data: str, model_path: str, output_type: str):
+def predict(data: str, model: str, output_type: str):
     """
-    Make single prediction on the input data
+    Make single prediction on the input data.
+
+    WARNING: The model must be loaded into memory on each query. This mode is extremely
+    inefficient for frequent real-time queries.
+
+    The command accepts raw string in JSON format or Linux path to the JSON file in format:
+        {
+            "cpu_model_name": "AMD Ryzen 7 PRO 7840HS",
+            "cpu_arch": "x86_64",
+            "cpu_model": "116",
+            "cpu_cores": 8,
+            "ram": 123456789,
+            "swap": 123456789,
+            "package_name": "example-package",
+            "epoch": 0,
+            "version": "1.0.0",
+            "mock_chroot": "fedora-42-x86_64"
+        }
+
+    Command response is in seconds.
     """
     if Path(data).exists():
         with open(data) as f:
@@ -103,7 +143,7 @@ def predict(data: str, model_path: str, output_type: str):
 
     logger.debug(f"Input data received: {input_data}")
 
-    model = load_model(model_path)
+    model = load_model(model)
     prediction = make_prediction(model, InputRecord.from_data_frame(input_data))
 
     if output_type == "json":
@@ -115,35 +155,27 @@ def predict(data: str, model_path: str, output_type: str):
 @entry_point.command("train")
 @click.option(
     "-d",
-    "--dataset-path",
+    "--dataset",
     type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
     required=True,
     help="Path to the dataset file",
 )
 @click.option(
     "-s",
-    "--destination-path",
+    "--destination",
     type=ClickPath(exists=False, dir_okay=False, resolve_path=True, file_okay=True, writable=True),
     required=True,
     help="Path to save the model",
 )
-@click.option(
-    "-r",
-    "--random-state",
-    type=int,
-    default=42,
-    show_default=True,
-    help="Random state for the model",
-)
-def train(dataset_path: str, destination_path: str, random_state: int):
+def train(dataset: str, destination: str):
     """
-    Train the model on the input dataset
+    Train the model on the input dataset.
     """
     from rpmeta.train import Trainer
 
-    trainer = Trainer(dataset_path=dataset_path, random_state=random_state)
+    trainer = Trainer(dataset_path=dataset)
     trainer.train()
-    trainer.save(destination_path)
+    trainer.save(destination)
 
 
 @entry_point.command("fetch-data")
@@ -152,7 +184,7 @@ def train(dataset_path: str, destination_path: str, random_state: int):
     "--path",
     type=ClickPath(exists=False, dir_okay=False, resolve_path=True),
     required=True,
-    help="Path to save the data",
+    help="Path to save the fetched data",
 )
 @click.option(
     "-s",
@@ -173,7 +205,8 @@ def train(dataset_path: str, destination_path: str, random_state: int):
     "--is-copr-instance",
     is_flag=True,
     help=(
-        "If script is running on Copr instance (e.g. Copr container instance), include this flag"
+        "If script is running on Copr instance (e.g. Copr container instance) with current"
+        " database dump (https://copr.fedorainfracloud.org/db_dumps/), include this flag"
     ),
 )
 @click.option("--koji", is_flag=True, help="Fetch data from Koji")
@@ -186,7 +219,7 @@ def fetch_data(
     koji: bool,
 ):
     """
-    Fetch the dataset from desired build systems
+    Fetch the dataset from desired build systems (Copr, Koji) and save it to the specified path.
     """
     from rpmeta.fetcher import CoprFetcher, KojiFetcher
 

@@ -12,7 +12,7 @@ def trained_model(tmp_path_factory):
     dataset_path = Path(__file__).parent / "data" / "dataset_train.json"
     model_path = tmp_path_factory.mktemp("models") / "model.joblib"
     result = run_rpmeta_cli(
-        ["train", "--dataset-path", str(dataset_path), "--destination-path", str(model_path)],
+        ["train", "--dataset", str(dataset_path), "--destination", str(model_path)],
     )
     assert result.returncode == 0, result.stderr or result.stdout
     return model_path
@@ -26,7 +26,7 @@ def api_server(trained_model):
             "-m",
             "rpmeta.cli",
             "serve",
-            "--model-path",
+            "--model",
             str(trained_model),
             "--port",
             "9876",
