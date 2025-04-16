@@ -1,0 +1,36 @@
+[
+  {
+    "build_id": 2700216,
+    "completion_time": "2025-04-17 18:05:34.827309+00:00",
+    "completion_ts": 1744913134.827309,
+    "creation_event_id": 149944104,
+    "creation_time": "2025-04-17 17:49:42.837835+00:00",
+    "creation_ts": 1744912182.837835,
+    "draft": false,
+    "epoch": null,
+    "extra": {
+      "source": {
+        "original_url": "git+https://src.fedoraproject.org/rpms/mingw-harfbuzz.git#392d83794fb0ab6cd79c7f11bc4ab07e44018c5b"
+      }
+    },
+    "name": "mingw-harfbuzz",
+    "nvr": "mingw-harfbuzz-11.1.0-1.fc43",
+    "owner_id": 1588,
+    "owner_name": "smani",
+    "package_id": 14598,
+    "package_name": "mingw-harfbuzz",
+    "promoter_id": null,
+    "promoter_name": null,
+    "promotion_time": null,
+    "promotion_ts": null,
+    "release": "1.fc43",
+    "source": "git+https://src.fedoraproject.org/rpms/mingw-harfbuzz.git#392d83794fb0ab6cd79c7f11bc4ab07e44018c5b",
+    "start_time": "2025-04-17 17:49:42.832680+00:00",
+    "start_ts": 1744912182.83268,
+    "state": 1,
+    "task_id": 131647419,
+    "version": "11.1.0",
+    "volume_id": 0,
+    "volume_name": "DEFAULT"
+  }
+]
