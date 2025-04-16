@@ -9,13 +9,13 @@ on:
       - main
 
 jobs:
-  test-e2e:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install just to run tests in fedora container
         run: |
           sudo apt-get install -y just podman
-      - name: Run e2e tests
+      - name: Run tests inside fedora container
         run: |
-          just --set ci true test-e2e-in-container
+          just --set ci true test-everything-in-container
