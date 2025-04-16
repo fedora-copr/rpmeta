@@ -18,8 +18,8 @@ fetching data, and serving a REST API endpoint.
 On Fedora:
 
 ```bash
-# dnf copr enable @copr/rpmeta
-# dnf install rpmeta
+dnf copr enable @copr/rpmeta
+dnf install rpmeta
 ```
 
 Or from the source:
