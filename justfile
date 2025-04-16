@@ -1,3 +1,5 @@
+ci := "false"
+
 container_name := "rpmeta_test:latest"
 working_dir := "$(pwd)"
 bind_path := "/app/bind"
@@ -8,8 +10,20 @@ minimal_python_version := "3.9"
 uv_cmd := "uv --color always"
 pytest_cmd := "pytest -vvv --log-level DEBUG --color=yes --cov-report term"
 
-container_engine := `podman --version} > /dev/null 2>&1 && echo "podman" || echo "docker"`
-container_run := container_engine + " run --rm -ti -v" + working_dir + ":" + bind_path + ":Z --security-opt label=disable " + container_name
+
+container_engine := if ci == "true" {
+    "podman"
+} else {
+    `podman --version > /dev/null 2>&1 && echo "podman" || echo "docker"`
+}
+
+container_run_opts := if ci == "true" {
+    " --rm -v "
+} else {
+    " --rm -ti -v "
+}
+container_run := container_engine + " run " + container_run_opts + working_dir + ":" + \
+    bind_path + ":Z --security-opt label=disable " + container_name
 
 build:
     {{container_engine}} build -t {{container_name}} -f test/Containerfile .
