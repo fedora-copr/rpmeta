@@ -1,35 +1,42 @@
 container_name := "rpmeta_test:latest"
 working_dir := "$(pwd)"
 bind_path := "/app/bind"
+test_target := "test/unit test/integration"
+test_e2e_target := "test/e2e"
 minimal_python_version := "3.9"
 
+uv_cmd := "uv --color always"
+pytest_cmd := "pytest -vvv --log-level DEBUG --color=yes --cov-report term"
+
+container_engine := `podman --version} > /dev/null 2>&1 && echo "podman" || echo "docker"`
+container_run := container_engine + " run --rm -ti -v" + working_dir + ":" + bind_path + ":Z --security-opt label=disable " + container_name
+
 build:
-    podman build -t {{container_name}} -f test/Containerfile .
+    {{container_engine}} build -t {{container_name}} -f test/Containerfile .
 
 rebuild:
-    podman build --no-cache -t {{container_name}} -f test/Containerfile .
+    {{container_engine}} build --no-cache -t {{container_name}} -f test/Containerfile .
 
 shell:
-    podman run --rm -it -v {{working_dir}}:{{bind_path}}:Z {{container_name}} /bin/bash
+    {{container_run}} /bin/bash
 
 rm-image:
-    podman image rm {{container_name}}
+    {{container_engine}} image rm {{container_name}}
 
-test-e2e-in-container: rebuild
+test-e2e-in-container: build
     @echo "Running e2e tests in container with fedora native python version"
-    podman run --rm -v {{working_dir}}:{{bind_path}}:Z {{container_name}} bash -c \
+    {{container_run}} /bin/bash -c \
         "cd {{bind_path}} && \
-        uv sync --all-extras --all-groups --reinstall && \
-        uv run -- \
-            pytest -vvv --log-level DEBUG --cov-report term test/e2e"
+        {{uv_cmd}} sync --all-extras --all-groups --reinstall && \
+        {{uv_cmd}} run -- {{pytest_cmd}} {{test_e2e_target}}"
 
     @echo "Running e2e tests in container with minimal python version supported: " \
-        "$(minimal_python_version)"
-    just rm-image
-    just rebuild
-    podman run --rm -v {{working_dir}}:{{bind_path}}:Z {{container_name}} bash -c \
+        "{{minimal_python_version}}"
+    {{container_run}} /bin/bash -c \
         "cd {{bind_path}} && \
-        uv python install {{minimal_python_version}} && \
-        uv sync --all-extras --all-groups --reinstall --python {{minimal_python_version}} && \
-        uv run --python {{minimal_python_version}} -- \
-            pytest -vvv --log-level DEBUG --cov-report term test/e2e"
+        {{uv_cmd}} python install {{minimal_python_version}} && \
+        {{uv_cmd}} sync --all-extras --all-groups --reinstall \
+            --python {{minimal_python_version}} && \
+        {{uv_cmd}} run --python {{minimal_python_version}} -- {{pytest_cmd}} {{test_e2e_target}}"
+
+test-in-container: test-e2e-in-container

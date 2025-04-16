@@ -1,9 +1,4 @@
-FROM fedora:latest
-
-RUN mkdir -p /app/copy
-RUN mkdir -p /app/bind
-
-COPY . /app/copy
+FROM fedora:latest as builder
 
 RUN dnf install -y \
     gcc \
@@ -12,8 +7,25 @@ RUN dnf install -y \
     uv \
     && dnf clean all
 
-# TODO: copy not used now, delete or use as one time copy when e2e testing
-WORKDIR /app/copy
+WORKDIR /build
+
+COPY pyproject.toml uv.lock* ./
+
 RUN uv sync --all-extras --all-groups
 
+
+FROM fedora:latest
+
+RUN dnf install -y \
+    gcc \
+    krb5-config \
+    python3-devel \
+    uv \
+    && dnf clean all
+
+ENV TERM=xterm-256color
+
 WORKDIR /app
+RUN mkdir -p /app/bind
+
+CMD ["bash"]
