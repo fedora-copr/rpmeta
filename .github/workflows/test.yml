@@ -18,4 +18,4 @@ jobs:
           sudo apt-get install -y just podman
       - name: Run e2e tests
         run: |
-          just test-e2e-in-container
+          just --set ci true test-e2e-in-container
