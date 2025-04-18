@@ -80,14 +80,12 @@ def serve(host: str, port: int, model: str):
             "prediction": 1234
         }
     """
-    import uvicorn
-
     from rpmeta.server import app, reload_model
 
     reload_model(model)
 
     logger.info(f"Serving on: {host}:{port}")
-    uvicorn.run(app, host=host, port=port)
+    app.run(host=host, port=port)
 
 
 @entry_point.command("predict")

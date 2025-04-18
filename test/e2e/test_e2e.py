@@ -31,11 +31,11 @@ def test_predict(trained_model):
 
 
 def test_api_server(api_server):
-    response = requests.get("http://localhost:9876")
+    response = requests.post("http://localhost:9876")
     assert response.status_code == 404
-    assert response.text == "Not Found"
+    assert "Not Found" in response.text
 
-    response = requests.post(
+    response = requests.get(
         "http://localhost:9876/predict",
         json=json.loads(
             (Path(__file__).parent.parent / "data" / "dataset_predict.json").read_text(),
@@ -47,7 +47,7 @@ def test_api_server(api_server):
 
     # TODO: this is where validation like pydantic comes handy instead of making
     # wrappers around the code to return 404
-    bad_response = requests.post(
+    bad_response = requests.get(
         "http://localhost:9876/predict",
         json={"foo": "bar"},
     )

@@ -1,39 +1,35 @@
-import asyncio
 import logging
 
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse
-from starlette.routing import Route
+from flask import Flask, jsonify, request
 
 from rpmeta.dataset import InputRecord
 from rpmeta.model import load_model, make_prediction
 
 logger = logging.getLogger(__name__)
 
+app = Flask(__name__)
+
 # TODO: no validation and error handling yet. Implement it or use FastAPI??
 
 
-async def predict_endpoint(request: Request) -> JSONResponse:
+@app.route("/predict", methods=["GET"])
+def predict_endpoint():
     """
     Endpoint to make prediction on the input data
     """
-    if request.headers.get("Content-Type") != "application/json":
-        return PlainTextResponse("Invalid Content-Type", status_code=400)
+    if request.content_type != "application/json":
+        return "Invalid Content-Type", 400
 
-    data = await request.json()
-    logger.debug(f"Received data: {data}")
-    # not actually async, but this way it won't block the starlette's event loop
-    prediction = await asyncio.to_thread(
-        make_prediction,
-        model,
-        InputRecord.from_data_frame(data),
-    )
-    return JSONResponse({"prediction": prediction})
+    try:
+        data = request.get_json()
+        logger.debug(f"Received data: {data}")
 
-
-routes = [Route("/predict", predict_endpoint, methods=["POST"])]
-app = Starlette(routes=routes)
+        input_record = InputRecord.from_data_frame(data)
+        prediction = make_prediction(model, input_record)
+        return jsonify({"prediction": prediction})
+    except Exception as e:
+        logger.error(f"Error during prediction: {e}")
+        return "Internal Server Error", 500
 
 
 model = None

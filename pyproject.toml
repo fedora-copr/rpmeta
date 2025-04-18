@@ -45,7 +45,7 @@ dev = [
     "requests>=2.30.0",
 ]
 server = [
-    "starlette>=0.35.0",
+    "flask>=3.0.0",
     "uvicorn>=0.21.0",
 ]
 trainer = [
