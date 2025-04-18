@@ -3,7 +3,7 @@ ci := "false"
 container_name := "rpmeta_test:latest"
 working_dir := "$(pwd)"
 bind_path := "/app/bind"
-test_target := "test/integration"
+test_target := "test/unit test/integration"
 test_e2e_target := "test/e2e"
 minimal_python_version := "3.9"
 
@@ -56,8 +56,7 @@ test-e2e-in-container: build
     {{container_run}} /bin/bash -c \
         "cd {{bind_path}} && \
         {{uv_cmd}} python install {{minimal_python_version}} && \
-        {{uv_sync}} --reinstall \
-            --python {{minimal_python_version}} && \
+        {{uv_sync}} --reinstall --python {{minimal_python_version}} && \
         {{uv_cmd}} run --python {{minimal_python_version}} -- {{pytest_cmd}} {{test_e2e_target}}"
 
 test-everything-in-container: test-in-container test-e2e-in-container
