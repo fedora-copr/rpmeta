@@ -42,8 +42,8 @@ class HwInfo:
             elif line.startswith("Swap:"):
                 hw_info["swap"] = int(line.split()[1])
 
-        if hw_info.get("cpu_model_name") is None:
-            hw_info["cpu_model_name"] = "unknown"
+        if hw_info.get("cpu_model") is None:
+            hw_info["cpu_model"] = "unknown"
 
         logger.debug(f"Extracted hardware info: {hw_info}")
         return cls(**hw_info)  # type: ignore
