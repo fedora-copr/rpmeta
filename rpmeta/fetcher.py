@@ -353,6 +353,32 @@ class CoprFetcher(Fetcher):
     def _get_url_to_hw_info_log(result_dir_url: str) -> str:
         return os.path.join(result_dir_url, "hw_info.log.gz")
 
+    def _append_records_from_build(self, build: dict, records: list[Record]) -> None:
+        build_chroots = self.client.build_chroot_proxy.get_list(build_id=build["id"])
+        if not build_chroots:
+            logger.info(f"No build_chroots for build: {build['id']} found")
+            return
+
+        for build_chroot in build_chroots:
+            if build_chroot["state"] != "succeeded":
+                continue
+
+            record = self._parse_build_chroot(
+                pkg_name=build["source_package"]["name"],
+                pkg_version=build["source_package"]["version"],
+                mock_chroot=build_chroot["name"],
+                result_dir_url=build_chroot["result_url"],
+                build_duration=int(build_chroot["ended_on"] - build_chroot["started_on"]),
+            )
+            if record:
+                logger.info(f"Succesfully retrieved record for {record.nevra}")
+                records.append(record)
+            else:
+                logger.warning(
+                    f"Parsing for build chroot {build_chroot['name']} for "
+                    f"build id: {build['id']} failed",
+                )
+
     def _get_records_from_project(self, project: dict) -> Optional[list[Record]]:
         builds = self.client.build_proxy.get_list(
             ownername=project["ownername"],
@@ -362,7 +388,7 @@ class CoprFetcher(Fetcher):
             logger.info(f"No builds for project: {project['full_name']} found")
             return []
 
-        records = []
+        records: list[Record] = []
         for build in builds:
             if build["ended_on"] is None or build["ended_on"] > self.end_date:
                 logger.info(f"Skipping build: {build['id']} as it's newer than end_date")
@@ -372,30 +398,7 @@ class CoprFetcher(Fetcher):
                 logger.info(f"Skipping build: {build['id']} as it's older than start_date")
                 return None
 
-            build_chroots = self.client.build_chroot_proxy.get_list(build_id=build["id"])
-            if not build_chroots:
-                logger.info(f"No build_chroots for build: {build['id']} found")
-                continue
-
-            for build_chroot in build_chroots:
-                if build_chroot["state"] != "succeeded":
-                    continue
-
-                record = self._parse_build_chroot(
-                    pkg_name=build["source_package"]["name"],
-                    pkg_version=build["source_package"]["version"],
-                    mock_chroot=build_chroot["name"],
-                    result_dir_url=build_chroot["result_url"],
-                    build_duration=int(build_chroot["ended_on"] - build_chroot["started_on"]),
-                )
-                if record:
-                    logger.info(f"Succesfully retrieved record for {record.nevra}")
-                    records.append(record)
-                else:
-                    logger.warning(
-                        f"Parsing for build chroot {build_chroot['name']} for "
-                        f"build id: {build['id']} failed",
-                    )
+            self._append_records_from_build(build, records)
 
         return records
 
