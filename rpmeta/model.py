@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import joblib
 import pandas as pd
 
+from rpmeta.constants import CATEGORICAL_FEATURES, NUMERICAL_FEATURES
 from rpmeta.dataset import InputRecord
 
 if TYPE_CHECKING:
@@ -49,5 +50,13 @@ def make_prediction(model: "Pipeline", input_data: InputRecord) -> int:
         The prediction time in seconds
     """
     df = pd.DataFrame([input_data.to_data_frame()])
-    prediction = model.predict(df, output_margin=True)
+    # TODO: retype in dataset.py
+    for col in CATEGORICAL_FEATURES:
+        df[col] = df[col].astype("category")
+
+    # TODO: not everything is int
+    for col in NUMERICAL_FEATURES:
+        df[col] = df[col].astype("int")
+
+    prediction = model.predict(df)
     return int(prediction[0].item())

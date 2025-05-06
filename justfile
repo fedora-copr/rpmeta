@@ -59,4 +59,11 @@ test-e2e-in-container: build
         {{uv_sync}} --reinstall --python {{minimal_python_version}} && \
         {{uv_cmd}} run --python {{minimal_python_version}} -- {{pytest_cmd}} {{test_e2e_target}}"
 
+test-e2e-fast:
+    @echo "Running e2e tests with only newer Python and no fresh install... \
+     this should be used for development only"
+    {{container_run}} /bin/bash -c \
+        "cd {{bind_path}} && \
+        {{uv_cmd}} run -- {{pytest_cmd}} {{test_e2e_target}}"
+
 test-everything-in-container: test-in-container test-e2e-in-container

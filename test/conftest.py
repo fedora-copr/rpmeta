@@ -12,12 +12,12 @@ from test.helpers import run_rpmeta_cli
 @pytest.fixture
 def trained_model(tmp_path_factory):
     dataset_path = Path(__file__).parent / "data" / "dataset_train.json"
-    model_path = tmp_path_factory.mktemp("models") / "model.joblib"
+    model_result_dir = tmp_path_factory.mktemp("models")
     result = run_rpmeta_cli(
-        ["train", "--dataset", str(dataset_path), "--destination", str(model_path)],
+        ["train", "--dataset", str(dataset_path), "--result-dir", str(model_result_dir)],
     )
     assert result.returncode == 0, result.stderr or result.stdout
-    return model_path
+    return Path(result.stdout.strip())
 
 
 @pytest.fixture
@@ -71,7 +71,6 @@ def dataset_record(hw_info, koji_build):
     return Record(
         package_name=koji_build[0]["name"],
         version=koji_build[0]["version"],
-        release=koji_build[0]["release"],
         epoch=0,
         mock_chroot="fedora-43-x86_64",
         build_duration=893,
