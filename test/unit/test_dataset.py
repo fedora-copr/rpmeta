@@ -21,7 +21,6 @@ def test_inputrecord_from_data_frame():
         "package_name": "test-package",
         "epoch": 0,
         "version": "1.0.0",
-        "release": "1.fc35",
         "mock_chroot": "fedora-35-x86_64",
         "cpu_model_name": "Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz",
         "cpu_arch": "x86_64",
@@ -35,7 +34,10 @@ def test_inputrecord_from_data_frame():
     assert input_record.package_name == "test-package"
     assert input_record.epoch == 0
     assert input_record.version == "1.0.0"
-    assert input_record.release == "1.fc35"
+    assert input_record.os == "fedora"
+    assert input_record.os_family == "fedora"
+    assert input_record.os_version == "35"
+    assert input_record.os_arch == "x86_64"
     assert input_record.mock_chroot == "fedora-35-x86_64"
     assert input_record.hw_info.cpu_model_name == "Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz"
     assert input_record.hw_info.cpu_arch == "x86_64"
@@ -58,7 +60,6 @@ def test_inputrecord_to_data_frame():
         package_name="test-package",
         epoch=0,
         version="1.0.0",
-        release="1.fc35",
         mock_chroot="fedora-35-x86_64",
         hw_info=hw_info,
     )
@@ -68,8 +69,10 @@ def test_inputrecord_to_data_frame():
         "package_name": "test-package",
         "epoch": 0,
         "version": "1.0.0",
-        "release": "1.fc35",
-        "mock_chroot": "fedora-35-x86_64",
+        "os": "fedora",
+        "os_family": "fedora",
+        "os_version": "35",
+        "os_arch": "x86_64",
         "cpu_model_name": "Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz",
         "cpu_arch": "x86_64",
         "cpu_model": "142",
@@ -92,7 +95,6 @@ def test_record_to_data_frame():
         package_name="test-package",
         epoch=0,
         version="1.0.0",
-        release="1.fc35",
         mock_chroot="fedora-35-x86_64",
         hw_info=hw_info,
         build_duration=120,
@@ -103,8 +105,10 @@ def test_record_to_data_frame():
         "package_name": "test-package",
         "epoch": 0,
         "version": "1.0.0",
-        "release": "1.fc35",
-        "mock_chroot": "fedora-35-x86_64",
+        "os": "fedora",
+        "os_family": "fedora",
+        "os_version": "35",
+        "os_arch": "x86_64",
         "cpu_model_name": "Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz",
         "cpu_arch": "x86_64",
         "cpu_model": "142",

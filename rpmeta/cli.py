@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import click
+import pandas as pd
 from click import DateTime
 from click import Path as ClickPath
 
@@ -160,20 +161,25 @@ def predict(data: str, model: str, output_type: str):
 )
 @click.option(
     "-s",
-    "--destination",
-    type=ClickPath(exists=False, dir_okay=False, resolve_path=True, file_okay=True, writable=True),
+    "--result-dir",
+    type=ClickPath(
+        dir_okay=True,
+        file_okay=False,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
     required=True,
-    help="Path to save the model",
+    help="Result directory to save the model",
 )
-def train(dataset: str, destination: str):
+def train(dataset: str, result_dir: str):
     """
     Train the model on the input dataset.
     """
-    from rpmeta.train import Trainer
+    from rpmeta.train.trainer import ModelTrainer
 
-    trainer = Trainer(dataset_path=dataset)
-    trainer.train()
-    trainer.save(destination)
+    trainer = ModelTrainer(data=pd.read_json(dataset), model_allowlist=["xgboost"])
+    print(*trainer.run(result_dir), sep="\n")
 
 
 @entry_point.command("fetch-data")

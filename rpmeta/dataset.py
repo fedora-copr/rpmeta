@@ -8,6 +8,8 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
+from rpmeta.constants import ALL_FEATURES
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,18 +69,43 @@ class InputRecord:
     package_name: str
     epoch: int
     version: str
-    release: str
-    # TODO: probably drop this since I can't parse every record
-    mock_chroot: Optional[str]
     hw_info: HwInfo
+    mock_chroot: Optional[str]
 
     @property
-    def nevra(self) -> str:
-        return f"{self.package_name}-{self.epoch}:{self.version}-{self.release}"
+    def neva(self) -> str:
+        """
+        Name, Epoch, Version, Architecture; Release is (intentionally) missing in data.
+        """
+        return f"{self.package_name}-{self.epoch}:{self.version}-{self.os_arch}"
 
     @property
-    def nvr(self) -> str:
-        return f"{self.package_name}-{self.version}-{self.release}"
+    def os(self) -> Optional[str]:
+        if self.mock_chroot is None:
+            return None
+
+        return self.mock_chroot.rsplit("-", 2)[0]
+
+    @property
+    def os_family(self) -> Optional[str]:
+        if self.os is None:
+            return None
+
+        return self.os.rsplit("-")[0]
+
+    @property
+    def os_version(self) -> Optional[str]:
+        if self.mock_chroot is None:
+            return None
+
+        return self.mock_chroot.rsplit("-", 2)[1]
+
+    @property
+    def os_arch(self) -> Optional[str]:
+        if self.mock_chroot is None:
+            return None
+
+        return self.mock_chroot.rsplit("-", 2)[2]
 
     @classmethod
     def from_data_frame(cls, data: dict) -> "InputRecord":
@@ -90,7 +117,6 @@ class InputRecord:
             package_name=data["package_name"],
             epoch=data["epoch"],
             version=data["version"],
-            release=data["release"],
             mock_chroot=data["mock_chroot"],
             hw_info=HwInfo(
                 cpu_model_name=data["cpu_model_name"],
@@ -106,14 +132,19 @@ class InputRecord:
         """
         Convert the record to dictionary that the _trained model_ understands.
         """
-        return {
+        result = {
             "package_name": self.package_name,
             "epoch": self.epoch,
             "version": self.version,
-            "release": self.release,
-            "mock_chroot": self.mock_chroot,
+            "os": self.os,
+            "os_family": self.os_family,
+            "os_version": self.os_version,
+            "os_arch": self.os_arch,
             **self.hw_info.to_dict(),
         }
+        # ensuring that all features are in expected order for the model
+        result = {k: result[k] for k in ALL_FEATURES}
+        return result
 
 
 @dataclass
@@ -126,7 +157,7 @@ class Record(InputRecord):
 
     def to_data_frame(self) -> dict:
         """
-        Convert the record to dictionary that the model _to be trained_ understands.
+        Convert the record to dictionary that the model _to be trained_ understands + has the target feature.
         """
         return {
             **super().to_data_frame(),
