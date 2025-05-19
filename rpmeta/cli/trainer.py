@@ -40,6 +40,9 @@ from click import Path as ClickPath
 )
 @click.pass_context
 def train(ctx, dataset: Path, result_dir: Path, model_allowlist: set[str]):
+    """
+    Subcommand to train the desired models on the input dataset.
+    """
     from rpmeta.train.trainer import ModelTrainer
 
     ctx.ensure_object(dict)
@@ -64,7 +67,7 @@ def train(ctx, dataset: Path, result_dir: Path, model_allowlist: set[str]):
 @click.pass_context
 def tune(ctx, n_trials: int):
     """
-    Train the model on the input dataset.
+    Run hyperparameter tuning for all models in the allowlist using Optuna framework.
     """
     from rpmeta.train.visualizer import ResultsHandler
 
@@ -83,5 +86,8 @@ def tune(ctx, n_trials: int):
 @train.command("run")
 @click.pass_context
 def run(ctx):
+    """
+    Run the model training on pre-defined hyperparameters.
+    """
     trainer = ctx.obj["trainer"]
     print(*trainer.run(trainer.result_dir), sep="\n")
