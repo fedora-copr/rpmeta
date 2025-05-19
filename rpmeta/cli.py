@@ -7,12 +7,14 @@ from pathlib import Path
 from typing import Any, Optional
 
 import click
+import pandas as pd
 from click import DateTime
 from click import Path as ClickPath
 
 from rpmeta.constants import HOST, PORT
 from rpmeta.dataset import InputRecord, Record
-from rpmeta.model import load_model, make_prediction
+from rpmeta.model import Predictor
+from rpmeta.train.models import get_all_model_names
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -51,11 +53,18 @@ def entry_point(debug: bool):
 @click.option(
     "-m",
     "--model",
-    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
     required=True,
     help="Path (URL or Linux path) to the model file",
 )
-def serve(host: str, port: int, model: str):
+@click.option(
+    "-c",
+    "--categories",
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
+    required=True,
+    help="Path (URL or Linux path) to the categories file",
+)
+def serve(host: str, port: int, model: Path, categories: Path):
     """
     Start the API server on specified host and port.
 
@@ -80,9 +89,9 @@ def serve(host: str, port: int, model: str):
             "prediction": 1234
         }
     """
-    from rpmeta.server import app, reload_model
+    from rpmeta.server import app, reload_predictor
 
-    reload_model(model)
+    reload_predictor(model, categories)
 
     logger.info(f"Serving on: {host}:{port}")
     app.run(host=host, port=port)
@@ -99,9 +108,16 @@ def serve(host: str, port: int, model: str):
 @click.option(
     "-m",
     "--model",
-    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
     required=True,
     help="Path (URL or Linux path) to the model file",
+)
+@click.option(
+    "-c",
+    "--categories",
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
+    required=True,
+    help="Path (URL or Linux path) to the categories file",
 )
 @click.option(
     "--output-type",
@@ -110,7 +126,7 @@ def serve(host: str, port: int, model: str):
     show_default=True,
     help="Output type for the prediction",
 )
-def predict(data: str, model: str, output_type: str):
+def predict(data: str, model: Path, categories: Path, output_type: str):
     """
     Make single prediction on the input data.
 
@@ -141,8 +157,8 @@ def predict(data: str, model: str, output_type: str):
 
     logger.debug(f"Input data received: {input_data}")
 
-    model = load_model(model)
-    prediction = make_prediction(model, InputRecord.from_data_frame(input_data))
+    predictor = Predictor.load(model, categories)
+    prediction = predictor.predict(InputRecord.from_data_frame(input_data))
 
     if output_type == "json":
         print(json.dumps({"prediction": prediction}))
@@ -154,33 +170,70 @@ def predict(data: str, model: str, output_type: str):
 @click.option(
     "-d",
     "--dataset",
-    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True),
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
     required=True,
     help="Path to the dataset file",
 )
 @click.option(
     "-s",
-    "--destination",
-    type=ClickPath(exists=False, dir_okay=False, resolve_path=True, file_okay=True, writable=True),
+    "--result-dir",
+    type=ClickPath(
+        dir_okay=True,
+        file_okay=False,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
     required=True,
-    help="Path to save the model",
+    help="Result directory to save the model",
 )
-def train(dataset: str, destination: str):
+@click.option(
+    "-m",
+    "--model-allowlist",
+    type=click.Choice(get_all_model_names(), case_sensitive=False),
+    multiple=True,
+    default=get_all_model_names(),
+    show_default=True,
+    callback=lambda _, __, values: set(values) if values else None,
+    help="List of models to train",
+)
+@click.option(
+    "--optuna",
+    is_flag=True,
+    help="Use Optuna for hyperparameter tuning instead of default parameters",
+)
+def train(dataset: Path, result_dir: Path, model_allowlist: set[str], optuna: bool):
     """
     Train the model on the input dataset.
     """
-    from rpmeta.train import Trainer
+    from rpmeta.train.trainer import ModelTrainer
+    from rpmeta.train.visualizer import ResultsHandler
 
-    trainer = Trainer(dataset_path=dataset)
-    trainer.train()
-    trainer.save(destination)
+    trainer = ModelTrainer(
+        data=pd.read_json(dataset),
+        model_allowlist=model_allowlist,
+        result_dir=result_dir,
+    )
+
+    if optuna:
+        all_results, best_models, studies = trainer.run_all_studies(n_trials=100)
+        result_handler = ResultsHandler(
+            all_trials=all_results,
+            best_models=best_models,
+            studies=studies,
+            X_test=trainer.X_test,
+            y_test=trainer.y_test,
+        )
+        result_handler.run_all()
+    else:
+        print(*trainer.run(result_dir), sep="\n")
 
 
 @entry_point.command("fetch-data")
 @click.option(
     "-p",
     "--path",
-    type=ClickPath(exists=False, dir_okay=False, resolve_path=True),
+    type=ClickPath(exists=False, dir_okay=False, resolve_path=True, path_type=Path),
     required=True,
     help="Path to save the fetched data",
 )
@@ -209,7 +262,7 @@ def train(dataset: str, destination: str):
 )
 @click.option("--koji", is_flag=True, help="Fetch data from Koji")
 def fetch_data(
-    path: str,
+    path: Path,
     start_date: Optional[datetime],
     end_date: Optional[datetime],
     copr: bool,
