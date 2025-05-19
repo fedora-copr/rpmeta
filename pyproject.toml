@@ -8,7 +8,7 @@ authors = [
 maintainers = [
     { name = "Copr Team", email = "copr-devel@lists.fedorahosted.org" },
 ]
-keywords = ["copr", "rpm", "rpmeta", "ai"]
+keywords = ["copr", "rpm", "rpmeta", "ai", "machine learning", "xgboost", "lightgbm"]
 readme = "README.md"
 classifiers = [
     "Environment :: Console",
