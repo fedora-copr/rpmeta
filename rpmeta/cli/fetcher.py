@@ -65,7 +65,9 @@ def fetch_data(
     koji: bool,
 ):
     """
-    Fetch the dataset from desired build systems (Copr, Koji) and save it to the specified path.
+    Fetch the dataset from desired build systems (Copr, Koji).
+
+    The dataset output is ready to be fed into the training process.
     """
     from rpmeta.fetcher import CoprFetcher, KojiFetcher
 
