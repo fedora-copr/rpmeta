@@ -45,7 +45,6 @@ dev = [
 ]
 server = [
     "flask>=3.0.0",
-    "uvicorn>=0.21.0",
 ]
 trainer = [
     "scikit-learn>=1.3.0",
