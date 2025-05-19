@@ -9,7 +9,8 @@ import pandas as pd
 from optuna import Study
 from sklearn.model_selection import train_test_split
 
-from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, DIVIDER, RESULTS_DIR, TARGET
+from rpmeta.config import Config
+from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, DIVIDER, TARGET
 from rpmeta.train.base import BaseModel, BestModelResult, TrialResult
 from rpmeta.train.models import get_all_model_names, get_all_models
 
@@ -20,17 +21,19 @@ class ModelTrainer:
     def __init__(
         self,
         data: pd.DataFrame,
+        config: Config,
         model_allowlist: Optional[set[str]] = None,
-        result_dir: Path = Path(RESULTS_DIR),
     ) -> None:
         self.df = data.copy()
+        self.config = config
+
         self._preprocess_dataset()
 
-        self.result_dir = result_dir
         category_dtypes = self._categorize_get_categories_mapping()
         category_dtypes_path = (
-            Path(result_dir) / "category_dtypes" / f"{time.strftime('%Y%m%d-%H%M%S')}.json"
+            Path(self.config.result_dir) / f"{time.strftime('%Y%m%d-%H%M%S')}.json"
         )
+
         with category_dtypes_path.open("w") as f:
             json.dump(category_dtypes, f, indent=4)
 
@@ -46,14 +49,14 @@ class ModelTrainer:
         )
 
         if model_allowlist is None:
-            model_allowlist = set(get_all_model_names())
+            model_allowlist = set(get_all_model_names(self.config))
 
         self.model_allowlist = model_allowlist
         logger.info(f"Model allowlist: {self.model_allowlist}")
 
     def _get_filtered_models(self) -> list[BaseModel]:
         models = []
-        for model in get_all_models():
+        for model in get_all_models(self.config):
             if model.name.lower() in self.model_allowlist:
                 models.append(model)
 
@@ -170,12 +173,9 @@ class ModelTrainer:
         logger.info("All models trained.")
         return all_results, best_models, studies
 
-    def run(self, result_dir: Path) -> list[Path]:
+    def run(self) -> list[Path]:
         """
         Run the model training and save the results.
-
-        Args:
-            result_dir (Path): The directory to save the results
 
         Returns:
             list[Path]: List of paths to the saved models
@@ -183,7 +183,7 @@ class ModelTrainer:
         models = []
         for model in self._get_filtered_models():
             logger.info(f"Starting training for model: {model.name}")
-            models.append(model.run(self.X, self.y, result_dir))
+            models.append(model.run(self.X, self.y))
 
         logger.info("Training completed for all models.")
         return models

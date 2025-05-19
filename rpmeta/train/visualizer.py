@@ -1,11 +1,11 @@
 import json
 import logging
 import os
+import tempfile
 import time
 import tracemalloc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import joblib
 import matplotlib.pyplot as plt
@@ -15,21 +15,17 @@ import pandas as pd
 import seaborn as sn
 from optuna import Study
 
-from rpmeta.constants import RESULTS_DIR
+from rpmeta.config import Config
 from rpmeta.train.base import BestModelResult, TrialResult
 
 logger = logging.getLogger(__name__)
 
-RESULT_DIR_OPTUNA = Path(RESULTS_DIR) / "training_results"
-
 
 @dataclass
 class VisualizeConfig:
-    plot_dir: Path = RESULT_DIR_OPTUNA / "plots"
     results_json: str = "best_models_results.json"
     performance_json: str = "model_performance.json"
     dist_csv: str = "distribution_data.csv"
-    optuna_dir: Path = RESULT_DIR_OPTUNA / "optuna_plots"
 
 
 class ResultsHandler:
@@ -40,28 +36,33 @@ class ResultsHandler:
         studies: dict[str, Study],
         X_test: pd.DataFrame,  # noqa: N803
         y_test: pd.Series,
-        config: Optional[VisualizeConfig] = None,
+        config: Config,
     ) -> None:
         self.all_trials = all_trials
         self.bests = best_models
         self.studies = studies
         self.X_test = X_test
         self.y_test = y_test
-        self.cfg = config or VisualizeConfig()
 
-        # ensure dirs
-        os.makedirs(self.cfg.plot_dir, exist_ok=True)
-        os.makedirs(self.cfg.optuna_dir, exist_ok=True)
+        self.config = config
+        self._tune_dir = self.config.result_dir / "hyperparameter_tuning"
+        self._optuna_dir = self._tune_dir / "optuna_plots"
+        self._plot_dir = self._tune_dir / "regular_plots"
+        self._data_dir = self._tune_dir / "data"
+
+        self._optuna_dir.mkdir(parents=True, exist_ok=True)
+        self._plot_dir.mkdir(parents=True, exist_ok=True)
+        self._data_dir.mkdir(parents=True, exist_ok=True)
 
         sn.set_theme(style="darkgrid")
         plt.grid(axis="y", linestyle="dotted")
         plt.grid(axis="x", linestyle="dotted")
 
     def _save_figure(self, fig: plt.Figure, name: str) -> None:
-        path = os.path.join(self.cfg.plot_dir, f"{name}.png")
+        path = os.path.join(self._plot_dir, f"{name}.png")
         fig.savefig(path, dpi=300, bbox_inches="tight")
         fig.close()
-        logger.info(f"Saved figure {name}.png")
+        logger.info(f"Saved figure {name}.png to {self._plot_dir}")
 
     def plot_trials(self) -> None:
         for model_name, results in self.all_trials.items():
@@ -151,24 +152,24 @@ class ResultsHandler:
             y_test_np = np.array(self.y_test)
             y_pred_np = np.array(y_pred)
 
-            valid_mask = (
+            valid_mask_positive_nums = (
                 ~np.isnan(y_test_np) & ~np.isnan(y_pred_np) & (y_test_np >= 0) & (y_pred_np >= 0)
             )
 
-            mask = (self.y_test <= 5000) & (y_pred <= 5000)
+            mask_5k = (self.y_test <= 5000) & (y_pred <= 5000)
 
             for suffix, y_test_f, y_pred_f, title in [
                 ("", self.y_test, y_pred, f"{model_name} Prediction vs. Reality"),
                 (
                     "_5k",
-                    self.y_test[mask],
-                    y_pred[mask],
+                    self.y_test[mask_5k],
+                    y_pred[mask_5k],
                     f"{model_name} Prediction vs. Reality (5k)",
                 ),
                 (
                     "_log_scale",
-                    np.log1p(y_test_np[valid_mask]),
-                    np.log1p(y_pred_np[valid_mask]),
+                    np.log1p(y_test_np[valid_mask_positive_nums]),
+                    np.log1p(y_pred_np[valid_mask_positive_nums]),
                     f"{model_name} Prediction vs. Reality (log-scale)",
                 ),
             ]:
@@ -227,16 +228,13 @@ class ResultsHandler:
             }
             for name, bm in self.bests.items()
         }
-        with open(self.cfg.results_json, "w") as f:
+        with open(self._data_dir / "best_models_test_scores.json", "w") as f:
             json.dump(out, f, indent=4)
 
     def plot_ditribution(self):
         plt.figure(figsize=(12, 6))
         y_test_log = np.log1p(self.y_test)
         for model_name, best_model in self.bests.items():
-            if model_name == "Dummy":
-                continue
-
             y_pred = best_model.model.predict(self.X_test)
 
             y_pred = np.array(y_pred)
@@ -260,23 +258,45 @@ class ResultsHandler:
 
         dist_data = {"y_test": self.y_test}
         for model_name, best_model in self.bests.items():
-            if model_name == "Dummy":
-                continue
             dist_data[model_name] = best_model.model.predict(self.X_test)
 
         df_dist = pd.DataFrame(dist_data)
-        df_dist.to_csv("distribution_data.csv", index=False)
+        path_to_save = self._data_dir / "distribution_data.csv"
+        df_dist.to_csv(path_to_save, index=False)
 
-    def plot_model_performance(self):
+    def _plot_metric(self, title, data, ylabel, name):
+        plt.figure(figsize=(9, 4))
+        plot_df = pd.DataFrame(
+            {"Model": list(data.keys()), "Value": list(data.values())},
+        )
+
+        sn.barplot(
+            data=plot_df,
+            x="Model",
+            y="Value",
+            hue="Model",
+            palette="mako",
+            legend=False,
+        )
+
+        sn.set_theme(style="darkgrid")
+        plt.grid(axis="y", linestyle="dotted")
+        plt.grid(axis="x", linestyle="dotted")
+        plt.ylabel(ylabel)
+        plt.title(title)
+        plt.grid(axis="y", linestyle="--", alpha=0.5)
+        plt.tight_layout()
+        self._save_figure(plt, name)
+
+    def plot_model_performance(self, tempdir: Path):
         prediction_times = {}
         memory_usages = {}
         model_file_sizes = {}
         reload_memory_usages = {}
 
-        os.makedirs("models", exist_ok=True)
-
+        # TODO: again this wastes a lot of memory... save the model to disk and load back
         for model_name, best_model in self.bests.items():
-            model_path = f"models/{model_name}.joblib"
+            model_path = tempdir / f"{model_name}.joblib"
             joblib.dump(best_model.model, model_path)
 
             model_file_sizes[model_name] = os.path.getsize(model_path) / 1024**2
@@ -312,45 +332,20 @@ class ResultsHandler:
             )
             print("-" * 50)
 
-        def plot_metric(title, data, ylabel, name):
-            plt.figure(figsize=(9, 4))
-            plot_df = pd.DataFrame(
-                {"Model": list(data.keys()), "Value": list(data.values())},
-            )
-
-            sn.barplot(
-                data=plot_df,
-                x="Model",
-                y="Value",
-                hue="Model",
-                palette="mako",
-                legend=False,
-            )
-
-            sn.set_theme(style="darkgrid")
-            plt.grid(axis="y", linestyle="dotted")
-            plt.grid(axis="x", linestyle="dotted")
-
-            plt.ylabel(ylabel)
-            plt.title(title)
-            plt.grid(axis="y", linestyle="--", alpha=0.5)
-            plt.tight_layout()
-            self._save_figure(plt, name)
-
-        plot_metric("Prediction Time", prediction_times, "Time (s)", "prediction_time")
-        plot_metric(
+        self._plot_metric("Prediction Time", prediction_times, "Time (s)", "prediction_time")
+        self._plot_metric(
             "RAM Usage During Predict",
             memory_usages,
             "Memory (MB)",
             "ram_usage_run",
         )
-        plot_metric(
+        self._plot_metric(
             "Model File Size on Disk",
             model_file_sizes,
             "Size (MB)",
             "model_size",
         )
-        plot_metric(
+        self._plot_metric(
             "RAM Usage After Reload",
             reload_memory_usages,
             "Memory (MB)",
@@ -364,51 +359,49 @@ class ResultsHandler:
             "model_file_sizes": model_file_sizes,
         }
 
-        with open("model_performance.json", "w") as f:
+        with open(self._data_dir / "model_performance.json", "w") as f:
             json.dump(performance_data, f, indent=4)
 
     def plot_optuna_plots(self):
-        os.makedirs("optuna_plots", exist_ok=True)
-
         for model_name, study in self.studies.items():
             try:
                 print(f"\nModel: {model_name}")
 
                 # Optimization history
                 fig = vis.plot_optimization_history(study, target_name="RMSE")
-                fig.write_image(f"optuna_plots/{model_name}_opt_history.png", scale=2)
-                fig.write_html(f"optuna_plots/{model_name}_opt_history.html")
+                fig.write_image(f"{self._optuna_dir}/{model_name}_opt_history.png", scale=2)
+                fig.write_html(f"{self._optuna_dir}/{model_name}_opt_history.html")
 
                 # Param importances
                 fig = vis.plot_param_importances(study)
                 fig.write_image(
-                    f"optuna_plots/{model_name}_param_importance.png",
+                    f"{self._optuna_dir}/{model_name}_param_importance.png",
                     scale=2,
                 )
-                fig.write_html(f"optuna_plots/{model_name}_param_importance.html")
+                fig.write_html(f"{self._optuna_dir}/{model_name}_param_importance.html")
 
                 # Parallel coordinates
                 fig = vis.plot_parallel_coordinate(study)
-                fig.write_image(f"optuna_plots/{model_name}_parallel.png", scale=2)
-                fig.write_html(f"optuna_plots/{model_name}_parallel.html")
+                fig.write_image(f"{self._optuna_dir}/{model_name}_parallel.png", scale=2)
+                fig.write_html(f"{self._optuna_dir}/{model_name}_parallel.html")
 
                 # Slice plot
                 fig = vis.plot_slice(study, target_name="RMSE")
-                fig.write_image(f"optuna_plots/{model_name}_slice.png", scale=2)
-                fig.write_html(f"optuna_plots/{model_name}_slice.html")
+                fig.write_image(f"{self._optuna_dir}/{model_name}_slice.png", scale=2)
+                fig.write_html(f"{self._optuna_dir}/{model_name}_slice.html")
 
                 # Contour plot
                 importances = study.best_trial.params.keys()
                 top_params = list(importances)[:2]
                 if len(top_params) >= 2:
                     fig = vis.plot_contour(study, params=top_params)
-                    fig.write_image(f"optuna_plots/{model_name}_contour.png", scale=2)
-                    fig.write_html(f"optuna_plots/{model_name}_contour.html")
+                    fig.write_image(f"{self._optuna_dir}/{model_name}_contour.png", scale=2)
+                    fig.write_html(f"{self._optuna_dir}/{model_name}_contour.html")
 
                 # EDF plot
                 fig = vis.plot_edf(study)
-                fig.write_image(f"optuna_plots/{model_name}_edf.png", scale=2)
-                fig.write_html(f"optuna_plots/{model_name}_edf.html")
+                fig.write_image(f"{self._optuna_dir}/{model_name}_edf.png", scale=2)
+                fig.write_html(f"{self._optuna_dir}/{model_name}_edf.html")
 
             except Exception as e:
                 print(f"Error for model {model_name}: {e}")
@@ -420,7 +413,8 @@ class ResultsHandler:
         self.plot_predictions()
         self.plot_test_value_compare()
         self.plot_ditribution()
-        self.plot_model_performance()
+        with tempfile.TemporaryDirectory() as tempdir:
+            self.plot_model_performance(Path(tempdir))
 
         # kaleido is required and it is not packaged in fedora
         try:

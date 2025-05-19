@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import numpy as np
@@ -42,8 +43,8 @@ def test_preprocess_applies_category_and_round():
 
     assert df.loc[0, "feature"] == "a"
     assert df.loc[0, "package_name"] == "pkg1"
-    assert pd.api.types.is_categorical_dtype(df["feature"])
-    assert pd.api.types.is_categorical_dtype(df["package_name"])
+    assert isinstance(df["feature"].dtype, pd.CategoricalDtype)
+    assert isinstance(df["package_name"].dtype, pd.CategoricalDtype)
 
 
 def test_predict_returns_prediction():
@@ -78,11 +79,12 @@ def test_predict_unknown_package_name_logs_and_returns_minus_one(caplog):
 
 @patch("rpmeta.model.save_joblib")
 @patch("builtins.open", new_callable=mock_open)
-def test_predictor_save_calls_save_joblib_and_writes_json(mock_file, mock_save_joblib):
+@patch("pathlib.Path.exists", return_value=False)
+def test_predictor_save_calls_save_joblib_and_writes_json(mock_exists, mock_file, mock_save_joblib):
     category_maps = {"package_name": ["pkg1"], "feature": ["a"]}
     mock_model = MagicMock()
     predictor = Predictor(mock_model, category_maps)
-    result_dir = MagicMock()
+    result_dir = Path("result_dir")
     predictor.save(result_dir, model_name="mymodel", category_maps_name="mycats")
     mock_save_joblib.assert_called_once_with(mock_model, result_dir, "mymodel")
     mock_file.assert_called_once_with(result_dir / "mycats.json", "w")

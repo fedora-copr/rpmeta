@@ -10,6 +10,7 @@ import click
 from click import DateTime
 from click import Path as ClickPath
 
+from rpmeta.config import Config
 from rpmeta.dataset import Record
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
     "-p",
     "--path",
     type=ClickPath(exists=False, dir_okay=False, resolve_path=True, path_type=Path),
-    required=True,
+    default=None,
     help="Path to save the fetched data",
 )
 @click.option(
@@ -56,7 +57,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option("--koji", is_flag=True, help="Fetch data from Koji")
 def fetch_data(
-    path: Path,
+    path: Optional[Path],
     start_date: Optional[datetime],
     end_date: Optional[datetime],
     limit: int,
@@ -93,6 +94,11 @@ def fetch_data(
         copr_fetcher = CoprFetcher(start_date, end_date, is_copr_instance, limit)
         fetched_data.extend(copr_fetcher.fetch_data())
 
+    path = (
+        path
+        or Config.get_config().result_dir
+        / f"dataset_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
+    )
     with open(path, "w") as f:
         logger.info(f"Saving data to: {path}")
         json.dump(fetched_data, f, indent=4, default=Record.to_data_frame)
