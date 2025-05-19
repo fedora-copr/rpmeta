@@ -10,18 +10,37 @@ from test.helpers import run_rpmeta_cli
 
 
 @pytest.fixture
-def trained_model(tmp_path_factory):
+def model_and_types(tmp_path_factory):
     dataset_path = Path(__file__).parent / "data" / "dataset_train.json"
-    model_path = tmp_path_factory.mktemp("models") / "model.joblib"
+    model_result_dir = tmp_path_factory.mktemp("models")
+    cat_dtypes_dir = model_result_dir / "category_dtypes"
+    cat_dtypes_dir.mkdir(parents=True)
+
     result = run_rpmeta_cli(
-        ["train", "--dataset", str(dataset_path), "--destination", str(model_path)],
+        [
+            "train",
+            "--dataset",
+            str(dataset_path),
+            "--result-dir",
+            str(model_result_dir),
+            "--model-allowlist",
+            "lightgbm",
+        ],
     )
     assert result.returncode == 0, result.stderr or result.stdout
-    return model_path
+
+    cat_dtypes_files = list(cat_dtypes_dir.glob("*.json"))
+    assert len(cat_dtypes_files) == 1, "Category dtypes file not found"
+    assert cat_dtypes_files[0].stat().st_size > 0, "Category dtypes file is empty"
+    assert cat_dtypes_files[0].read_text(), "Category dtypes file is empty"
+    assert cat_dtypes_files[0].suffix == ".json", "Category dtypes file is not a JSON file"
+
+    return Path(result.stdout.strip()), cat_dtypes_files[0]
 
 
 @pytest.fixture
-def api_server(trained_model):
+def api_server(model_and_types):
+    trained_model_file, category_dtypes_file = model_and_types
     api_server = Popen(
         [
             "python3",
@@ -29,7 +48,9 @@ def api_server(trained_model):
             "rpmeta.cli",
             "serve",
             "--model",
-            str(trained_model),
+            str(trained_model_file),
+            "--categories",
+            str(category_dtypes_file),
             "--port",
             "9876",
             "--host",
@@ -71,7 +92,6 @@ def dataset_record(hw_info, koji_build):
     return Record(
         package_name=koji_build[0]["name"],
         version=koji_build[0]["version"],
-        release=koji_build[0]["release"],
         epoch=0,
         mock_chroot="fedora-43-x86_64",
         build_duration=893,

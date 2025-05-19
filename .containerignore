@@ -1,1 +1,13 @@
+# git
+.git
+.gitattributes
+.gitignore
+
+# JetBrains
+.idea
+
+# vscode
+.vscode
+
+# Python
 .venv

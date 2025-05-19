@@ -5,6 +5,7 @@ RUN dnf install -y \
     krb5-config \
     python3-devel \
     uv \
+    clang \
     && dnf clean all
 
 WORKDIR /build
@@ -21,6 +22,7 @@ RUN dnf install -y \
     krb5-config \
     python3-devel \
     uv \
+    clang \
     && dnf clean all
 
 ENV TERM=xterm-256color
