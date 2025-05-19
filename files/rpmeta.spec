@@ -43,6 +43,10 @@ Copr and Koji build systems, and model training.
 
 # xgboost nor any other boosting algorithm is packaged to fedora
 Requires:       python3-scikit-learn
+Requires:       python3-optuna
+Requires:       python3-seaborn
+Requires:       python3-matplotlib
+Requires:       python3-plotly
 
 
 %package -n     fetcher
