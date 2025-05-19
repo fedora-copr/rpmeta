@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install just to run tests in fedora container
         run: |
-          sudo apt-get install -y just podman
+          sudo apt -y install just podman
       - name: Run tests inside fedora container
         run: |
           just --set ci true test-everything-in-container
