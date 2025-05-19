@@ -67,4 +67,4 @@ fetcher = [
 ]
 
 [project.scripts]
-rpmeta = "rpmeta.cli:entry_point"
+rpmeta = "rpmeta.cli.main:entry_point"

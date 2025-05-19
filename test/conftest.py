@@ -25,6 +25,7 @@ def model_and_types(tmp_path_factory):
             str(model_result_dir),
             "--model-allowlist",
             "lightgbm",
+            "run",
         ],
     )
     assert result.returncode == 0, result.stderr or result.stdout
@@ -45,12 +46,13 @@ def api_server(model_and_types):
         [
             "python3",
             "-m",
-            "rpmeta.cli",
-            "serve",
+            "rpmeta.cli.main",
+            "model",
             "--model",
             str(trained_model_file),
             "--categories",
             str(category_dtypes_file),
+            "serve",
             "--port",
             "9876",
             "--host",
