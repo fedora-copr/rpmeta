@@ -26,6 +26,7 @@ class ModelTrainer:
         self.df = data.copy()
         self._preprocess_dataset()
 
+        self.result_dir = result_dir
         category_dtypes = self._categorize_get_categories_mapping()
         category_dtypes_path = (
             Path(result_dir) / "category_dtypes" / f"{time.strftime('%Y%m%d-%H%M%S')}.json"

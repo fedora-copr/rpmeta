@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 from flask import Flask, jsonify, request
 
@@ -36,11 +35,11 @@ def predict_endpoint():
 predictor = None
 
 
-def reload_predictor(model_path: Path, categories_path: Path) -> None:
+def reload_predictor(new_predictor: Predictor) -> None:
     """
     Reload the model and categories map from the given path for the API server.
     """
     global predictor
-    logger.info(f"Reloading predictor from: {model_path}")
-    predictor = Predictor.load(model_path, categories_path)
-    logger.info(f"Predictor reloaded from: {model_path}")
+    logger.info("Reloading predictor")
+    predictor = new_predictor
+    logger.info("Predictor reloaded")
