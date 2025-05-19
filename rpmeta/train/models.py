@@ -4,12 +4,13 @@ from typing import Any
 
 from optuna import Trial
 
+from rpmeta.config import Config
 from rpmeta.train.base import BaseModel
 
 
 class XGBoostModel(BaseModel):
-    def __init__(self):
-        super().__init__("xgboost", use_preprocessor=False)
+    def __init__(self, config: Config):
+        super().__init__("xgboost", use_preprocessor=False, config=config)
 
     def _make_regressor(self, params: dict[str, int | float | str]):
         from xgboost import XGBRegressor
@@ -51,8 +52,8 @@ class XGBoostModel(BaseModel):
 
 
 class LightGBMModel(BaseModel):
-    def __init__(self):
-        super().__init__("lightgbm", use_preprocessor=False)
+    def __init__(self, config: Config):
+        super().__init__("lightgbm", use_preprocessor=False, config=config)
 
     def _make_regressor(self, params: dict[str, int | float | str]):
         from lightgbm import LGBMRegressor
@@ -101,12 +102,12 @@ class LightGBMModel(BaseModel):
         }
 
 
-def get_all_models() -> list[BaseModel]:
+def get_all_models(config: Config) -> list[BaseModel]:
     return [
-        XGBoostModel(),
-        LightGBMModel(),
+        XGBoostModel(config=config),
+        LightGBMModel(config=config),
     ]
 
 
-def get_all_model_names() -> list[str]:
-    return [model.name.lower() for model in get_all_models()]
+def get_all_model_names(config: Config) -> list[str]:
+    return [model.name.lower() for model in get_all_models(config)]

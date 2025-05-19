@@ -14,7 +14,8 @@ from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_err
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from rpmeta.constants import CATEGORICAL_FEATURES, NUMERICAL_FEATURES, RESULTS_DIR
+from rpmeta.config import Config
+from rpmeta.constants import CATEGORICAL_FEATURES, NUMERICAL_FEATURES
 from rpmeta.helpers import save_joblib
 
 logger = logging.getLogger(__name__)
@@ -88,8 +89,9 @@ class Model(ABC):
 
 
 class BaseModel(Model):
-    def __init__(self, name: str, use_preprocessor: bool = True) -> None:
+    def __init__(self, name: str, config: Config, use_preprocessor: bool = True) -> None:
         super().__init__(name=name)
+        self.config = config
         self._use_preprocessor = use_preprocessor
 
         self.preprocessor = None
@@ -119,6 +121,14 @@ class BaseModel(Model):
     def _make_regressor(self, params: dict[str, int | float | str]) -> Any:
         """Instantiate the base regressor (without preprocessing)"""
         ...
+
+    @staticmethod
+    @abstractmethod
+    def param_space(trial: Trial) -> dict[str, Any]: ...
+
+    @staticmethod
+    @abstractmethod
+    def default_params() -> dict[str, Any]: ...
 
     def run_study(
         self,
@@ -183,7 +193,7 @@ class BaseModel(Model):
         y_pred = best_pipeline.predict(X_test)
 
         now = time.strftime("%Y-%m-%d_%H-%M-%S")
-        save_joblib(best_pipeline, Path(RESULTS_DIR), f"{self.name}_{now}")
+        save_joblib(best_pipeline, self.config.result_dir, f"{self.name}_{now}")
 
         best_result = BestModelResult(
             model_name=self.name,
@@ -201,7 +211,6 @@ class BaseModel(Model):
         self,
         X: pd.DataFrame,  # noqa: N803
         y: pd.Series,
-        result_dir: Path,
     ) -> Path:
         """
         Train the model on suggested hyperparameters and save the model.
@@ -209,7 +218,6 @@ class BaseModel(Model):
         Args:
             X (pd.DataFrame): Features
             y (pd.Series): Target
-            result_dir (Path): Directory to save the model
 
         Returns:
             Path: Path to the saved model
@@ -221,4 +229,4 @@ class BaseModel(Model):
         logger.debug("Model fitting complete.")
 
         now = time.strftime("%Y-%m-%d_%H-%M-%S")
-        return save_joblib(pipeline, result_dir, f"{self.name}_{now}")
+        return save_joblib(pipeline, self.config.result_dir, f"{self.name}_{now}")

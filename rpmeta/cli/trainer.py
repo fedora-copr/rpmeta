@@ -1,8 +1,11 @@
 from pathlib import Path
+from typing import Optional
 
 import click
 import pandas as pd
 from click import Path as ClickPath
+
+from rpmeta.config import Config
 
 
 @click.group("train")
@@ -23,8 +26,8 @@ from click import Path as ClickPath
         resolve_path=True,
         path_type=Path,
     ),
-    required=True,
-    help="Result directory to save the model",
+    default=None,
+    help="Result directory to save relevant data",
 )
 @click.option(
     "-m",
@@ -39,7 +42,7 @@ from click import Path as ClickPath
     help="List of models to train",
 )
 @click.pass_context
-def train(ctx, dataset: Path, result_dir: Path, model_allowlist: set[str]):
+def train(ctx, dataset: Path, result_dir: Optional[Path], model_allowlist: set[str]):
     """
     Subcommand to train the desired models on the input dataset.
     """
@@ -47,12 +50,15 @@ def train(ctx, dataset: Path, result_dir: Path, model_allowlist: set[str]):
 
     ctx.ensure_object(dict)
 
+    config = Config.get_config(result_dir=result_dir)
+
     trainer = ModelTrainer(
         data=pd.read_json(dataset),
         model_allowlist=model_allowlist,
-        result_dir=result_dir,
+        config=config,
     )
     ctx.obj["trainer"] = trainer
+    ctx.obj["config"] = config
 
 
 @train.command("tune")
@@ -79,6 +85,7 @@ def tune(ctx, n_trials: int):
         studies=studies,
         X_test=trainer.X_test,
         y_test=trainer.y_test,
+        config=ctx.obj["config"],
     )
     result_handler.run_all()
 
@@ -90,4 +97,4 @@ def run(ctx):
     Run the model training on pre-defined hyperparameters.
     """
     trainer = ctx.obj["trainer"]
-    print(*trainer.run(trainer.result_dir), sep="\n")
+    print(*trainer.run(), sep="\n")

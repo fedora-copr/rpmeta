@@ -12,9 +12,7 @@ from test.helpers import run_rpmeta_cli
 @pytest.fixture
 def model_and_types(tmp_path_factory):
     dataset_path = Path(__file__).parent / "data" / "dataset_train.json"
-    model_result_dir = tmp_path_factory.mktemp("models")
-    cat_dtypes_dir = model_result_dir / "category_dtypes"
-    cat_dtypes_dir.mkdir(parents=True)
+    result_dir = tmp_path_factory.mktemp("models")
 
     result = run_rpmeta_cli(
         [
@@ -22,7 +20,7 @@ def model_and_types(tmp_path_factory):
             "--dataset",
             str(dataset_path),
             "--result-dir",
-            str(model_result_dir),
+            str(result_dir),
             "--model-allowlist",
             "lightgbm",
             "run",
@@ -30,7 +28,7 @@ def model_and_types(tmp_path_factory):
     )
     assert result.returncode == 0, result.stderr or result.stdout
 
-    cat_dtypes_files = list(cat_dtypes_dir.glob("*.json"))
+    cat_dtypes_files = list(result_dir.glob("*.json"))
     assert len(cat_dtypes_files) == 1, "Category dtypes file not found"
     assert cat_dtypes_files[0].stat().st_size > 0, "Category dtypes file is empty"
     assert cat_dtypes_files[0].read_text(), "Category dtypes file is empty"

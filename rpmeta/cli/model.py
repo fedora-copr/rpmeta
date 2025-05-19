@@ -1,11 +1,12 @@
 import json
 import logging
 from pathlib import Path
+from typing import Optional
 
 import click
 from click import Path as ClickPath
 
-from rpmeta.constants import HOST, PORT
+from rpmeta.config import Config
 from rpmeta.dataset import InputRecord
 from rpmeta.model import Predictor
 
@@ -45,17 +46,16 @@ def model(ctx, model: Path, categories: Path):
 
 
 @model.command("serve")
-@click.option("--host", type=str, default=HOST, show_default=True, help="Host to serve the API on")
+@click.option("--host", type=str, default=None, help="Host to serve the API on")
 @click.option(
     "-p",
     "--port",
     type=int,
-    default=PORT,
-    show_default=True,
+    default=None,
     help="Port to serve the API on",
 )
 @click.pass_context
-def serve(ctx, host: str, port: int):
+def serve(ctx, host: Optional[str], port: Optional[int]):
     """
     Start the API server on specified host and port.
 
@@ -85,8 +85,10 @@ def serve(ctx, host: str, port: int):
 
     reload_predictor(ctx.obj["predictor"])
 
-    logger.info(f"Serving on: {host}:{port}")
-    app.run(host=host, port=port)
+    config = Config.get_config(host=host, port=port)
+
+    logger.info(f"Serving on: {config.host}:{config.port}")
+    app.run(host=config.host, port=config.port)
 
 
 @model.command("predict")

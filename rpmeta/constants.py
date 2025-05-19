@@ -1,12 +1,11 @@
-from os import environ
+import os
+from pathlib import Path
 
 # constants
 
 KOJI_HUB_URL = "https://koji.fedoraproject.org/kojihub"
 
 DIVIDER = 100000
-
-RESULTS_DIR = "/etc/rpmeta/results"
 
 # DO NOT TOUCH THE ORDER of these features, it is important for the model
 # If you are changing the order, you need to retrain the model
@@ -26,7 +25,14 @@ ALL_FEATURES = CATEGORICAL_FEATURES + NUMERICAL_FEATURES
 TARGET = "build_duration"
 
 
-# config of model/server
+# config defaults
 
-HOST = environ.get("HOST", "localhost")
-PORT = int(environ.get("PORT", 44882))
+HOST = os.environ.get("HOST", "localhost")
+PORT = int(os.environ.get("PORT", 44882))
+
+USER_RESULT_DIR = (
+    Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "rpmeta"
+)
+GLOBAL_RESULT_DIR = Path("/var/lib/rpmeta")
+# order is important! user overrides global result dir
+RESULT_DIR_LOCATIONS = [USER_RESULT_DIR, GLOBAL_RESULT_DIR]

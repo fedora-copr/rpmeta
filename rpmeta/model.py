@@ -90,8 +90,12 @@ class Predictor:
             model_name: The name of the model file
             category_maps_name: The name of the category maps file
         """
+        cat_file = result_dir / f"{category_maps_name}.json"
+        if cat_file.exists():
+            raise ValueError(f"File {cat_file} already exists, won't overwrite it")
+
         save_joblib(self.model, result_dir, model_name)
 
-        with open(result_dir / f"{category_maps_name}.json", "w") as f:
+        with open(cat_file, "w") as f:
             json.dump(self.category_maps, f, indent=4)
-            logger.info(f"Saved category maps to {result_dir / f'{category_maps_name}.json'}")
+            logger.info(f"Saved category maps to {cat_file}")
