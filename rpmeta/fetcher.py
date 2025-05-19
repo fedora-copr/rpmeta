@@ -148,7 +148,6 @@ class KojiFetcher(Fetcher):
         return Record(
             package_name=build["package_name"],
             version=build["version"],
-            release=build["release"],
             epoch=build["epoch"] or 0,
             mock_chroot=mock_chroot,
             build_duration=int(task_info["completion_ts"] - task_info["start_ts"]),
@@ -207,7 +206,7 @@ class KojiFetcher(Fetcher):
                 self._append_batch_of_successful_builds(successful_builds, builds)
                 self._current_page += 1
             except Exception as e:
-                print(f"Failed to fetch builds: {e!s}")
+                logger.error(f"Failed to fetch builds: {e!s}")
                 # Sometimes koji throws an generic error, unexpected exceptions or something
                 # like that. In that case, just skip to next page instead... this is dealing with
                 # really old data so the koji python API freaks out sometimes.
@@ -279,7 +278,7 @@ class CoprFetcher(Fetcher):
                 build_duration=int(build_chroot.ended_on - build_chroot.started_on),
             )
             if record:
-                logger.info(f"Succesfully retrieved record for {record.nevra}")
+                logger.info(f"Succesfully retrieved record for {record.neva}")
                 result.append(record)
             else:
                 logger.warning(f"Parsing for build chroot {build_chroot.id} failed")
@@ -315,12 +314,11 @@ class CoprFetcher(Fetcher):
                 logger.error("Failed to fetch hw_info")
                 return None
 
-            epoch, version, release = CoprFetcher._evr_from_pkg_version(pkg_version)
+            epoch, version = CoprFetcher._epoch_and_version_from_pkg_version(pkg_version)
             return Record(
                 package_name=pkg_name,
                 epoch=epoch,
                 version=version,
-                release=release,
                 mock_chroot=mock_chroot,
                 build_duration=build_duration,
                 hw_info=hw_info,
@@ -330,11 +328,10 @@ class CoprFetcher(Fetcher):
             return None
 
     @staticmethod
-    def _evr_from_pkg_version(pkg_version: str) -> tuple[int, str, str]:
+    def _epoch_and_version_from_pkg_version(pkg_version: str) -> tuple[int, str]:
         epoch = int(pkg_version.split(":")[0]) if ":" in pkg_version else 0
         version = pkg_version.split(":")[-1].split("-")[0]
-        release = pkg_version.split("-")[-1]
-        return epoch, version, release
+        return epoch, version
 
     @staticmethod
     def _fetch_hw_info_from_copr(url_to_hw_info: str) -> Optional[HwInfo]:
@@ -371,7 +368,7 @@ class CoprFetcher(Fetcher):
                 build_duration=int(build_chroot["ended_on"] - build_chroot["started_on"]),
             )
             if record:
-                logger.info(f"Succesfully retrieved record for {record.nevra}")
+                logger.info(f"Succesfully retrieved record for {record.neva}")
                 records.append(record)
             else:
                 logger.warning(
