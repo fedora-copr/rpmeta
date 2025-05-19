@@ -14,7 +14,6 @@ from click import Path as ClickPath
 from rpmeta.constants import HOST, PORT
 from rpmeta.dataset import InputRecord, Record
 from rpmeta.model import Predictor
-from rpmeta.train.models import get_all_model_names
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -190,9 +189,11 @@ def predict(data: str, model: Path, categories: Path, output_type: str):
 @click.option(
     "-m",
     "--model-allowlist",
-    type=click.Choice(get_all_model_names(), case_sensitive=False),
+    # NOTE: update this manually, get_all_model_names can't be currently imported due to
+    # the modularity
+    type=click.Choice(["lightgbm", "xgboost"], case_sensitive=False),
     multiple=True,
-    default=get_all_model_names(),
+    default=["lightgbm", "xgboost"],
     show_default=True,
     callback=lambda _, __, values: set(values) if values else None,
     help="List of models to train",
