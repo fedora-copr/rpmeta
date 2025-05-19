@@ -1,8 +1,5 @@
 ci:
   autofix_prs: false
-  skip:
-    # prettier made some changes that breaks plugins entirely, locked on last stable version
-    - prettier
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
