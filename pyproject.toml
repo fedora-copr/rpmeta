@@ -10,10 +10,10 @@ maintainers = [
 ]
 keywords = ["copr", "rpm", "rpmeta", "ai", "machine learning", "xgboost", "lightgbm"]
 readme = "README.md"
+license = "GPL-3.0-or-later"
 classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
