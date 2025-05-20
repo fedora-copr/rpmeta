@@ -7,9 +7,6 @@ from rpmeta.cli.fetcher import fetch_data
 from rpmeta.cli.model import model
 from rpmeta.cli.trainer import train
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-
 
 def _get_context_settings() -> dict[str, Any]:
     return {"help_option_names": ["-h", "--help"]}
@@ -28,8 +25,12 @@ def entry_point(log_level: str):
     """
     Predict build time duration of an RPM build based on available hardware resources.
     """
-    logger.setLevel(log_level.upper())
-    logger.debug(f"Log level set to {log_level}")
+    root_logger = logging.getLogger(__name__)
+    root_logger.handlers.clear()
+
+    logging.basicConfig(level=log_level.upper(), datefmt="[%H:%M:%S]")
+
+    root_logger.debug(f"Log level set to {log_level}")
 
 
 entry_point.add_command(fetch_data)
