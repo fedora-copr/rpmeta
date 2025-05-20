@@ -40,14 +40,14 @@ class XGBoostModel(BaseModel):
     @staticmethod
     def default_params() -> dict[str, Any]:
         return {
-            "n_estimators": 709,
-            "learning_rate": 0.1867,
+            "n_estimators": 651,
+            "learning_rate": 0.2248,
             "max_depth": 8,
-            "subsample": 0.999,
-            "colsample_bytree": 0.968,
-            "reg_alpha": 0.7826,
-            "reg_lambda": 0.8684,
-            "min_child_weight": 3.7893,
+            "subsample": 0.9789,
+            "colsample_bytree": 0.9835,
+            "reg_alpha": 0.8798,
+            "reg_lambda": 5.8016,
+            "min_child_weight": 1.1275,
         }
 
 
