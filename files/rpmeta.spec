@@ -26,6 +26,7 @@ BuildRequires:  python3dist(click-man)
 
 %package -n     server
 Summary:        RPMeta server module for serving REST API endpoint
+Requires:       %{name} = %{version}-%{release}
 
 %description -n server
 This package provides the server module of RPMeta, including a REST API endpoint for making
@@ -34,23 +35,21 @@ predictions.
 %pyproject_extras_subpkg -n %{name} server
 
 
+# xgboost nor any other boosting algorithm is packaged to fedora
 %package -n     trainer
 Summary:        RPMeta trainer module for predictive model training
+Requires:       %{name} = %{version}-%{release}
 
 %description -n trainer
 This package provides the training module of RPMeta, including data processing, data fetchin from
 Copr and Koji build systems, and model training.
 
-# xgboost nor any other boosting algorithm is packaged to fedora
-Requires:       python3-scikit-learn
-Requires:       python3-optuna
-Requires:       python3-seaborn
-Requires:       python3-matplotlib
-Requires:       python3-plotly
+%pyproject_extras_subpkg -n %{name} trainer
 
 
 %package -n     fetcher
 Summary:        RPMeta fetcher module for data fetching
+Requires:       %{name} = %{version}-%{release}
 
 %description -n fetcher
 This package provides the fetcher module of RPMeta, including data fetching from Copr and Koji.
@@ -60,10 +59,16 @@ This package provides the fetcher module of RPMeta, including data fetching from
 
 %prep
 %autosetup
+# boosting models like xgboost and ligthgbm are not packaged in fedora
+# the same goes for the kaleido, tool optuna uses for generating fancy graphs
+# if user want's to use this, they have to install it via other package manager (e.g. pipx)
+sed -i '/xgboost/d' pyproject.toml
+sed -i '/lightgbm/d' pyproject.toml
+sed -i '/kaleido/d' pyproject.toml
 
 
 %generate_buildrequires
-%pyproject_buildrequires -r -x server -x fetcher
+%pyproject_buildrequires -r -x server -x fetcher -x trainer
 
 
 %build
