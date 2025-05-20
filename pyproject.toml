@@ -25,6 +25,9 @@ dependencies = [
     "click>=8.0",
     "joblib>=1.0",
     "pandas>=2.0",
+    # TODO: to remove this from models like xgboost or lightgbm, own transform function
+    # is needed to implement to create_pipeline
+    "scikit-learn>=1.3.0",
 ]
 
 [project.urls]
@@ -47,7 +50,6 @@ server = [
     "flask>=3.0.0",
 ]
 trainer = [
-    "scikit-learn>=1.3.0",
     "optuna>=3.4.0",
     "seaborn>=0.12.0",
     "matplotlib>=3.8.0",
