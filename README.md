@@ -46,18 +46,17 @@ to install subpackages, use `rpmeta[SUBPACKAGE1, SUBPACKAGE2, ...]` syntax
 Or from the source:
 
 ```bash
-pipx install git+https://github.com/fedora-copr/rpmeta.git
+pipx install "rpmeta[SUBCOMMANDS] @ git+https://github.com/fedora-copr/rpmeta.git"
 ```
 
 ##### Dependencies
 
-In order for `rpmeta` (and all of its subpackages) installation from pip to work directly,
+In order for `rpmeta` (and all of its subpackages) installation from PyPI to work directly,
 you need to install these dependencies:
 
 - gcc
 - krb5-config
-- python3
-- clang
+- python3-devel
 
 ##### Man pages
 
