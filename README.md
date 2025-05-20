@@ -15,12 +15,22 @@ fetching data, and serving a REST API endpoint.
 
 ### Installation
 
-On Fedora:
+#### Fedora:
 
 ```bash
 dnf copr enable @copr/rpmeta
 dnf install rpmeta
 ```
+
+to install the also subpackages, add `+SUBPACKAGE` to the `rpmeta`.
+
+#### Other distributions:
+
+```bash
+pipx install rpmeta
+```
+
+to install subpackages, use `rpmeta[SUBPACKAGE1, SUBPACKAGE2, ...]` syntax
 
 Or from the source:
 
@@ -28,7 +38,19 @@ Or from the source:
 pipx install git+https://github.com/fedora-copr/rpmeta.git
 ```
 
-However, since pip cannot distribute UNIX manpages, if you want them available, you need
+##### Dependencies
+
+In order for `rpmeta` (and all of its subpackages) installation from pip to work directly,
+you need to install these dependencies:
+
+- gcc
+- krb5-config
+- python3
+- clang
+
+##### Man pages
+
+Since pip cannot distribute UNIX manpages, if you want them available, you need
 to install them manually via:
 
 ```bash
@@ -45,7 +67,7 @@ To see available commands and options, run:
 rpmeta --help
 ```
 
-For detailed information about a specific command, run:
+For detailed information about a specific (sub)command, run:
 
 ```bash
 rpmeta <command> --help
