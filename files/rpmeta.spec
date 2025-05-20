@@ -62,9 +62,9 @@ This package provides the fetcher module of RPMeta, including data fetching from
 # boosting models like xgboost and ligthgbm are not packaged in fedora
 # the same goes for the kaleido, tool optuna uses for generating fancy graphs
 # if user want's to use this, they have to install it via other package manager (e.g. pipx)
-sed -i '/xgboost/d' pyproject.toml
-sed -i '/lightgbm/d' pyproject.toml
-sed -i '/kaleido/d' pyproject.toml
+sed -i "/xgboost>=2.0.0/d" pyproject.toml
+sed -i '/lightgbm>=4.0.0/d' pyproject.toml
+sed -i '/kaleido==0.2.1/d' pyproject.toml
 
 
 %generate_buildrequires
