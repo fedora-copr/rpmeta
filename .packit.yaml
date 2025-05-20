@@ -11,6 +11,16 @@ jobs:
     targets:
       - fedora-all
     owner: "@copr"
+    project: "rpmeta-git"
+    branch: main
+    list_on_homepage: True
+    preserve_project: True
+
+  - job: copr_build
+    trigger: release
+    targets:
+      - fedora-all
+    owner: "@copr"
     project: "rpmeta"
     branch: main
     list_on_homepage: True
