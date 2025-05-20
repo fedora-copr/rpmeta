@@ -17,7 +17,7 @@ def _get_context_settings() -> dict[str, Any]:
     "-l",
     "--log-level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False),
-    default="ERROR",
+    default="WARNING",
     show_default=True,
     help="Set the logging level",
 )
