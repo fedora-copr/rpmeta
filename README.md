@@ -24,6 +24,17 @@ dnf install rpmeta
 
 to install the also subpackages, add `+SUBPACKAGE` to the `rpmeta`.
 
+Fedora is missing a few dependencies, so you need to install them manually:
+
+Dependencies for model training:
+
+- xgboost
+- lightgbm
+
+Dependencies for fancy graphs output from Optuna:
+
+- kaleido
+
 #### Other distributions:
 
 ```bash
