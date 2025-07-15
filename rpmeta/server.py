@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
+from rpmeta import __version__
 from rpmeta.dataset import InputRecord
 from rpmeta.model import Predictor
 
@@ -50,7 +51,7 @@ app = FastAPI(
 
     The prediction is the estimated build time in seconds.
     """,
-    version="1.0.0",
+    version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
 )

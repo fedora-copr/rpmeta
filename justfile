@@ -124,3 +124,11 @@ rpmeta-container-install: build-rpmeta-container
 rpmeta-containerized +args:
     {{run_container_run}} /bin/bash -c \
         "cd {{bind_path}} && rpmeta {{args}}"
+
+# Shows the current version of the project
+version-get:
+    @python scripts/update_version.py
+
+# Updates the version across all project files
+version-set new_version:
+    @python scripts/update_version.py {{new_version}}
