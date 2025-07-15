@@ -59,10 +59,10 @@ def test_api_server(api_server):
     assert "prediction" in response.json()
     assert isinstance(response.json()["prediction"], int)
 
-    # TODO: this is where validation like pydantic comes handy instead of making
-    # wrappers around the code to return 404
+    # With FastAPI, bad data should still give a 500, but it's handled better
     bad_response = requests.get(
         "http://localhost:9876/predict",
         json={"foo": "bar"},
     )
     assert bad_response.status_code == 500
+    assert "Internal Server Error" in bad_response.json().get("detail", "")

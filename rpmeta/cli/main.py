@@ -21,7 +21,8 @@ def _get_context_settings() -> dict[str, Any]:
     show_default=True,
     help="Set the logging level",
 )
-def entry_point(log_level: str):
+@click.pass_context
+def entry_point(ctx, log_level: str):
     """
     Predict build time duration of an RPM build based on available hardware resources.
     """
@@ -31,6 +32,9 @@ def entry_point(log_level: str):
     logging.basicConfig(level=log_level.upper(), datefmt="[%H:%M:%S]")
 
     root_logger.debug(f"Log level set to {log_level}")
+
+    ctx.ensure_object(dict)
+    ctx.obj["log_level"] = log_level.upper()
 
 
 entry_point.add_command(fetch_data)

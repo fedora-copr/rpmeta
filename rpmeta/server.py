@@ -1,45 +1,58 @@
 import logging
 
-from flask import Flask, jsonify, request
+from fastapi import FastAPI, HTTPException, Request, status
 
 from rpmeta.dataset import InputRecord
 from rpmeta.model import Predictor
 
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+app = FastAPI(
+    title="RPMeta API",
+    description="API for predicting build times for RPM packages",
+    version="1.0.0",
+)
 
-# TODO: no validation and error handling yet. Implement it or use FastAPI??
+# Store the predictor instance globally - loaded once when server starts
+# This ensures the model is loaded into RAM only once
+predictor = None
 
 
-@app.route("/predict", methods=["GET"])
-def predict_endpoint():
+@app.get("/predict")
+async def predict_endpoint(request: Request) -> dict[str, int]:
     """
-    Endpoint to make prediction on the input data
+    Endpoint to make prediction on the input data.
+    Uses synchronous processing as async isn't recommended for model inference.
     """
-    if request.content_type != "application/json":
-        return "Invalid Content-Type", 400
+    if request.headers.get("content-type") != "application/json":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Content-Type, expected application/json",
+        )
 
     try:
-        data = request.get_json()
+        data = await request.json()
         logger.debug(f"Received data: {data}")
 
         input_record = InputRecord.from_data_frame(data)
         prediction = predictor.predict(input_record)
-        return jsonify({"prediction": prediction})
+        return {"prediction": prediction}
     except Exception as e:
+        # TODO: better error handling
         logger.error(f"Error during prediction: {e}")
-        return "Internal Server Error", 500
-
-
-predictor = None
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
 
 
 def reload_predictor(new_predictor: Predictor) -> None:
     """
-    Reload the model and categories map from the given path for the API server.
+    Reload the model and categories map for the API server.
     """
+    # This allows the model to be loaded into RAM only once when the server starts,
+    # and can be called to reload the model if needed without restarting the server.
     global predictor
     logger.info("Reloading predictor")
     predictor = new_predictor
-    logger.info("Predictor reloaded")
+    logger.info("Predictor loaded successfully")
