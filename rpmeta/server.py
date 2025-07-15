@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, status
+from pydantic import BaseModel, Field
 
 from rpmeta.dataset import InputRecord
 from rpmeta.model import Predictor
@@ -9,8 +10,49 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="RPMeta API",
-    description="API for predicting build times for RPM packages",
+    description="""
+    API for predicting build times for RPM packages based on hardware information
+    and package metadata.
+
+    ## Overview
+
+    This API allows you to predict how long it will take to build an RPM package
+    based on the hardware specifications of the build machine and package information.
+
+    ## Usage
+
+    Send a POST request to `/predict` with the necessary package and hardware information.
+
+    ### Example Input
+    ```json
+    {
+      "package_name": "rust-winit",
+      "epoch": 0,
+      "version": "0.30.8",
+      "mock_chroot": "fedora-41-x86_64",
+      "hw_info": {
+        "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
+        "cpu_arch": "x86_64",
+        "cpu_model": "85",
+        "cpu_cores": 6,
+        "ram": 15324520,
+        "swap": 8388604
+      }
+    }
+    ```
+
+    ### Example Response
+    ```json
+    {
+      "prediction": 283
+    }
+    ```
+
+    The prediction is the estimated build time in seconds.
+    """,
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # Store the predictor instance globally - loaded once when server starts
@@ -18,32 +60,50 @@ app = FastAPI(
 predictor = None
 
 
-@app.get("/predict")
-async def predict_endpoint(request: Request) -> dict[str, int]:
+class PredictionResponse(BaseModel):
     """
-    Endpoint to make prediction on the input data.
-    Uses synchronous processing as async isn't recommended for model inference.
+    Response model for the prediction endpoint.
+
+    This contains the predicted build duration in seconds.
     """
-    if request.headers.get("content-type") != "application/json":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid Content-Type, expected application/json",
-        )
 
-    try:
-        data = await request.json()
-        logger.debug(f"Received data: {data}")
+    prediction: int = Field(
+        description="Predicted build duration in seconds",
+        gt=0,
+        examples=[283, 1800, 7200],
+    )
 
-        input_record = InputRecord.from_data_frame(data)
-        prediction = predictor.predict(input_record)
-        return {"prediction": prediction}
-    except Exception as e:
-        # TODO: better error handling
-        logger.error(f"Error during prediction: {e}")
+
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Predict build duration",
+    description=(
+        "Predicts the build duration for an RPM package based on hardware information"
+        " and package metadata."
+    ),
+)
+def predict_endpoint(input_record: InputRecord) -> PredictionResponse:
+    """
+    Predict the build duration for an RPM package.
+
+    This endpoint accepts package information and hardware specs and returns
+    the predicted build duration in seconds.
+    """
+
+    logger.debug(f"Received request for prediction: {input_record}")
+
+    if predictor is None:
+        logger.error("Predictor not initialized")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal Server Error",
+            detail="Model not initialized. Server not ready for predictions.",
         )
+
+    prediction = predictor.predict(input_record)
+    logger.debug(f"Prediction for {input_record.package_name}: {prediction} seconds")
+    return PredictionResponse(prediction=prediction)
 
 
 def reload_predictor(new_predictor: Predictor) -> None:

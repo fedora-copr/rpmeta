@@ -1,12 +1,14 @@
 {
-  "cpu_arch": "x86_64",
-  "cpu_cores": 6,
-  "cpu_model": "85",
-  "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
   "epoch": 0,
+  "hw_info": {
+    "cpu_arch": "x86_64",
+    "cpu_cores": 6,
+    "cpu_model": "85",
+    "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
+    "ram": 15324520,
+    "swap": 8388604
+  },
   "mock_chroot": "fedora-41-x86_64",
   "package_name": "rust-winit",
-  "ram": 15324520,
-  "swap": 8388604,
   "version": "0.30.8"
 }

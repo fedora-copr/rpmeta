@@ -59,7 +59,7 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
     """
     Start the API server on specified host and port.
 
-    The server will accept HTTP GET requests with JSON payloads containing the input data in
+    The server will accept HTTP POST requests with JSON payloads containing the input data in
     format:
         {
             "cpu_model_name": "AMD Ryzen 7 PRO 7840HS",
@@ -150,7 +150,7 @@ def predict(ctx, data: str, output_type: str):
     logger.debug(f"Input data received: {input_data}")
 
     predictor = ctx.obj["predictor"]
-    prediction = predictor.predict(InputRecord.from_data_frame(input_data))
+    prediction = predictor.predict(InputRecord(**input_data))
 
     if output_type == "json":
         print(json.dumps({"prediction": prediction}))
