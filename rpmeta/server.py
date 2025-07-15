@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
 from rpmeta.dataset import InputRecord
@@ -74,7 +74,17 @@ class PredictionResponse(BaseModel):
     )
 
 
-@app.post(
+# API router for v1 endpoints
+v1_router = APIRouter(prefix="/v1")
+
+_responses_v1 = {
+    200: {"description": "Successful prediction"},
+    422: {"description": "Validation error - Invalid input data"},
+    500: {"description": "Server error - Model not initialized"},
+}
+
+
+@v1_router.post(
     "/predict",
     response_model=PredictionResponse,
     status_code=status.HTTP_200_OK,
@@ -83,8 +93,9 @@ class PredictionResponse(BaseModel):
         "Predicts the build duration for an RPM package based on hardware information"
         " and package metadata."
     ),
+    responses=_responses_v1,
 )
-def predict_endpoint(input_record: InputRecord) -> PredictionResponse:
+def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
     """
     Predict the build duration for an RPM package.
 
@@ -104,6 +115,31 @@ def predict_endpoint(input_record: InputRecord) -> PredictionResponse:
     prediction = predictor.predict(input_record)
     logger.debug(f"Prediction for {input_record.package_name}: {prediction} seconds")
     return PredictionResponse(prediction=prediction)
+
+
+app.include_router(v1_router)
+
+
+# Add an alias endpoint at the root path that redirects to the latest version (currently v1)
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Predict build duration (Latest API version)",
+    description=(
+        "Alias to the latest API version (currently v1). Predicts the build duration for "
+        "an RPM package based on hardware information and package metadata."
+    ),
+    responses=_responses_v1,
+)
+def predict_endpoint(input_record: InputRecord) -> PredictionResponse:
+    """
+    Alias to the latest API version (currently v1).
+
+    This is a convenience endpoint that forwards requests to the current stable API version.
+    For new implementations, consider using the versioned endpoint directly.
+    """
+    return predict_endpoint_v1(input_record)
 
 
 def reload_predictor(new_predictor: Predictor) -> None:
