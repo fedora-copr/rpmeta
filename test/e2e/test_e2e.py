@@ -59,7 +59,6 @@ def test_api_server(api_server):
     assert "prediction" in response.json()
     assert isinstance(response.json()["prediction"], int)
 
-    # With FastAPI, bad data should still give a 500, but it's handled better
     bad_response = requests.post(
         "http://localhost:9876/predict",
         json={"foo": "bar"},
