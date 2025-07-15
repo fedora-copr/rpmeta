@@ -49,7 +49,7 @@ def test_api_server(api_server):
     assert response.status_code == 404
     assert "Not Found" in response.text
 
-    response = requests.get(
+    response = requests.post(
         "http://localhost:9876/predict",
         json=json.loads(
             (Path(__file__).parent.parent / "data" / "dataset_predict.json").read_text(),
@@ -60,9 +60,9 @@ def test_api_server(api_server):
     assert isinstance(response.json()["prediction"], int)
 
     # With FastAPI, bad data should still give a 500, but it's handled better
-    bad_response = requests.get(
+    bad_response = requests.post(
         "http://localhost:9876/predict",
         json={"foo": "bar"},
     )
-    assert bad_response.status_code == 500
-    assert "Internal Server Error" in bad_response.json().get("detail", "")
+    assert bad_response.status_code == 422
+    assert "detail" in bad_response.json()
