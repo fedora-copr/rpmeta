@@ -62,16 +62,18 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
     The server will accept HTTP POST requests with JSON payloads containing the input data in
     format:
         {
-            "cpu_model_name": "AMD Ryzen 7 PRO 7840HS",
-            "cpu_arch": "x86_64",
-            "cpu_model": "116",
-            "cpu_cores": 8,
-            "ram": 123456789,
-            "swap": 123456789,
             "package_name": "example-package",
             "epoch": 0,
             "version": "1.0.0",
-            "mock_chroot": "fedora-42-x86_64"
+            "mock_chroot": "fedora-42-x86_64",
+            "hw_info": {
+                "cpu_model_name": "Intel Xeon Processor (Cascadelake)",
+                "cpu_arch": "x86_64",
+                "cpu_model": "85",
+                "cpu_cores": 6,
+                "ram": 15324520,
+                "swap": 8388604
+            }
         }
 
     The server will return a JSON response with the predicted build time duration in seconds in
@@ -127,16 +129,18 @@ def predict(ctx, data: str, output_type: str):
 
     The command accepts raw string in JSON format or Linux path to the JSON file in format:
         {
-            "cpu_model_name": "AMD Ryzen 7 PRO 7840HS",
-            "cpu_arch": "x86_64",
-            "cpu_model": "116",
-            "cpu_cores": 8,
-            "ram": 123456789,
-            "swap": 123456789,
             "package_name": "example-package",
             "epoch": 0,
             "version": "1.0.0",
-            "mock_chroot": "fedora-42-x86_64"
+            "mock_chroot": "fedora-42-x86_64",
+            "hw_info": {
+                "cpu_model_name": "AMD Ryzen 7 PRO 7840HS",
+                "cpu_arch": "x86_64",
+                "cpu_model": "116",
+                "cpu_cores": 8,
+                "ram": 123456789,
+                "swap": 123456789
+            }
         }
 
     Command response is in seconds.

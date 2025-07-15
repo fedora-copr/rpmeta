@@ -100,5 +100,4 @@ If you'd like to contribute to RPMeta, please see the [CONTRIBUTING.md](CONTRIBU
 - Run tests
 - Follow code style guidelines
 - Manage versions
-- Submit changes
 - Create a release

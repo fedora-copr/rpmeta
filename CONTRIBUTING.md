@@ -8,7 +8,6 @@ Thank you for your interest in contributing to RPMeta! This document provides gu
 - [Testing](#testing)
 - [Code Style and Linting](#code-style-and-linting)
 - [Version Management](#version-management)
-- [Submitting Changes](#submitting-changes)
 - [Creating a Release](#creating-a-release)
 
 ## Development Setup
