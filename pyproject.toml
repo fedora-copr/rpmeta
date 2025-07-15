@@ -47,7 +47,8 @@ dev = [
     "requests>=2.30.0",
 ]
 server = [
-    "flask>=3.0.0",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.25.0",
 ]
 trainer = [
     "optuna>=3.4.0",

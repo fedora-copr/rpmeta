@@ -81,6 +81,9 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
         }
     or -1 as the prediction if the package name is not recognized.
     """
+    from uvicorn.config import Config as UvicornConfig
+    from uvicorn.server import Server
+
     from rpmeta.server import app, reload_predictor
 
     reload_predictor(ctx.obj["predictor"])
@@ -88,7 +91,15 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
     config = Config.get_config(host=host, port=port)
 
     logger.info(f"Serving on: {config.host}:{config.port}")
-    app.run(host=config.host, port=config.port)
+
+    uvicorn_config = UvicornConfig(
+        app=app,
+        host=config.host,
+        port=config.port,
+        log_level=ctx.obj.get("log_level", "INFO").lower(),
+    )
+    server = Server(config=uvicorn_config)
+    server.run()
 
 
 @model.command("predict")
