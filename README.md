@@ -10,6 +10,7 @@ fetching data, and serving a REST API endpoint.
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Contributing](#contributing)
 
 ---
 
@@ -88,3 +89,16 @@ To see the whole documentation at once, use manpages:
 ```bash
 man 1 rpmeta(-SUBCOMMANDS)?
 ```
+
+---
+
+### Contributing
+
+If you'd like to contribute to RPMeta, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to:
+
+- Set up your development environment
+- Run tests
+- Follow code style guidelines
+- Manage versions
+- Submit changes
+- Create a release
