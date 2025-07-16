@@ -4,8 +4,8 @@ import os
 import tempfile
 import time
 import tracemalloc
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import joblib
 import matplotlib.pyplot as plt
@@ -19,13 +19,6 @@ from rpmeta.config import Config
 from rpmeta.train.base import BestModelResult, TrialResult
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class VisualizeConfig:
-    results_json: str = "best_models_results.json"
-    performance_json: str = "model_performance.json"
-    dist_csv: str = "distribution_data.csv"
 
 
 class ResultsHandler:
@@ -54,15 +47,37 @@ class ResultsHandler:
         self._plot_dir.mkdir(parents=True, exist_ok=True)
         self._data_dir.mkdir(parents=True, exist_ok=True)
 
+        self._set_plot_style()
+
+    def _set_plot_style(self) -> None:
         sn.set_theme(style="darkgrid")
         plt.grid(axis="y", linestyle="dotted")
         plt.grid(axis="x", linestyle="dotted")
 
     def _save_figure(self, fig: plt.Figure, name: str) -> None:
-        path = os.path.join(self._plot_dir, f"{name}.png")
+        path = self._plot_dir / f"{name}.png"
         fig.savefig(path, dpi=300, bbox_inches="tight")
-        fig.close()
+        plt.close(fig)
         logger.info(f"Saved figure {name}.png to {self._plot_dir}")
+
+    def _format_parameter(self, value: Any) -> Any:
+        if isinstance(value, float):
+            if value.is_integer():
+                return int(value)
+            return round(value, 4)
+        return value
+
+    def _prepare_best_params(self, best_row: pd.Series) -> dict[str, Any]:
+        best_params = {k: v for k, v in best_row.items() if k not in {"model_name"}}
+
+        if "params" in best_params and isinstance(best_params["params"], dict):
+            params_dict = best_params.pop("params")
+            best_params.update(params_dict)
+
+        exclude_keys = {"trial", "trial_number", "model"}
+        return {
+            k: self._format_parameter(v) for k, v in best_params.items() if k not in exclude_keys
+        }
 
     def plot_trials(self) -> None:
         for model_name, results in self.all_trials.items():
@@ -79,29 +94,10 @@ class ResultsHandler:
                 palette="mako",
             )
 
-            sn.set_theme(style="darkgrid")
-            plt.grid(axis="y", linestyle="dotted")
-            plt.grid(axis="x", linestyle="dotted")
-
             best_row = results_df.iloc[-1]
             best_score = best_row["test_score"]
             best_index = best_row["trial_number"]
-
-            best_params = {k: v for k, v in best_row.items() if k not in {"model_name"}}
-            best_params |= best_params["params"]
-            del best_params["params"]
-
-            best_params = {
-                k: (
-                    int(v)
-                    if isinstance(v, float) and v.is_integer()
-                    else round(v, 4)
-                    if isinstance(v, float)
-                    else v
-                )
-                for k, v in best_params.items()
-                if k not in {"trial", "trial_number", "model"}
-            }
+            best_params = self._prepare_best_params(best_row)
 
             plt.title(
                 f"Model performance: {model_name}\n"
@@ -143,7 +139,7 @@ class ResultsHandler:
                 "test_score",
                 ascending=False,
             ).reset_index(drop=True)
-            print(results_df)
+            print(f"\n{results_df}")
 
     def plot_predictions(self):
         for model_name, best in self.bests.items():
@@ -184,10 +180,6 @@ class ResultsHandler:
                     linewidth=0.3,
                 )
 
-                sn.set_theme(style="darkgrid")
-                plt.grid(axis="y", linestyle="dotted")
-                plt.grid(axis="x", linestyle="dotted")
-
                 plt.plot(
                     [y_test_f.min(), y_test_f.max()],
                     [y_test_f.min(), y_test_f.max()],
@@ -206,10 +198,6 @@ class ResultsHandler:
 
         plt.figure(figsize=(10, 6))
         sn.barplot(data=best_df, x="model_name", y="neg_rmse", color="royalblue")
-
-        sn.set_theme(style="darkgrid")
-        plt.grid(axis="y", linestyle="dotted")
-        plt.grid(axis="x", linestyle="dotted")
 
         plt.title("Comparison of the best models by negative RMSE")
         plt.ylabel("Negative RMSE")
@@ -231,7 +219,7 @@ class ResultsHandler:
         with open(self._data_dir / "best_models_test_scores.json", "w") as f:
             json.dump(out, f, indent=4)
 
-    def plot_ditribution(self):
+    def plot_distribution(self):
         plt.figure(figsize=(12, 6))
         y_test_log = np.log1p(self.y_test)
         for model_name, best_model in self.bests.items():
@@ -244,10 +232,6 @@ class ResultsHandler:
             sn.kdeplot(y_pred_log, label=model_name)
 
         sn.kdeplot(y_test_log, label="Reality", linestyle="--", color="black")
-
-        sn.set_theme(style="darkgrid")
-        plt.grid(axis="y", linestyle="dotted")
-        plt.grid(axis="x", linestyle="dotted")
 
         plt.title("Distribution of predicted values vs. reality (log-scale)")
         plt.xlabel("build_duration")
@@ -264,7 +248,7 @@ class ResultsHandler:
         path_to_save = self._data_dir / "distribution_data.csv"
         df_dist.to_csv(path_to_save, index=False)
 
-    def _plot_metric(self, title, data, ylabel, name):
+    def _plot_metric(self, title: str, data: dict, ylabel: str, name: str) -> None:
         plt.figure(figsize=(9, 4))
         plot_df = pd.DataFrame(
             {"Model": list(data.keys()), "Value": list(data.values())},
@@ -279,9 +263,7 @@ class ResultsHandler:
             legend=False,
         )
 
-        sn.set_theme(style="darkgrid")
-        plt.grid(axis="y", linestyle="dotted")
-        plt.grid(axis="x", linestyle="dotted")
+        self._set_plot_style()
         plt.ylabel(ylabel)
         plt.title(title)
         plt.grid(axis="y", linestyle="--", alpha=0.5)
@@ -294,43 +276,47 @@ class ResultsHandler:
         model_file_sizes = {}
         reload_memory_usages = {}
 
-        # TODO: again this wastes a lot of memory... save the model to disk and load back
         for model_name, best_model in self.bests.items():
-            model_path = tempdir / f"{model_name}.joblib"
-            joblib.dump(best_model.model, model_path)
+            try:
+                # save model to disk first to reduce memory pressure
+                model_path = tempdir / f"{model_name}.joblib"
+                joblib.dump(best_model.model, model_path)
+                model_file_sizes[model_name] = os.path.getsize(model_path) / 1024**2
 
-            model_file_sizes[model_name] = os.path.getsize(model_path) / 1024**2
+                # measure original model performance
+                tracemalloc.start()
+                start_time = time.perf_counter()
+                model_ref = best_model.model.predict(self.X_test)
+                end_time = time.perf_counter()
+                model_ref, peak = tracemalloc.get_traced_memory()
+                tracemalloc.stop()
 
-            tracemalloc.start()
-            start_time = time.perf_counter()
+                prediction_times[model_name] = end_time - start_time
+                memory_usages[model_name] = peak / 1024**2
 
-            _ = best_model.model.predict(self.X_test)
+                # clear reference to reduce memory usage
+                del model_ref
 
-            end_time = time.perf_counter()
-            _, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
+                tracemalloc.start()
+                loaded_model = joblib.load(model_path)
+                model_ref = loaded_model.predict(self.X_test)
+                model_ref, peak_reload = tracemalloc.get_traced_memory()
+                tracemalloc.stop()
 
-            prediction_times[model_name] = end_time - start_time
-            memory_usages[model_name] = peak / 1024**2
+                reload_memory_usages[model_name] = peak_reload / 1024**2
 
-            tracemalloc.start()
-            loaded_model = joblib.load(model_path)
+                print(f"{model_name}:")
+                print(f"  Prediction time: {prediction_times[model_name]:.4f} s")
+                print(f"  Peak RAM (original): {memory_usages[model_name]:.2f} MB")
+                print(f"  Model file size: {model_file_sizes[model_name]:.2f} MB")
+                print(f"  Peak RAM (after reload): {reload_memory_usages[model_name]:.2f} MB")
+                print("-" * 50)
 
-            _ = loaded_model.predict(self.X_test)
+                del loaded_model, model_ref
 
-            _, peak_reload = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-
-            reload_memory_usages[model_name] = peak_reload / 1024**2
-
-            print(f"{model_name}:")
-            print(f"  Prediction time: {prediction_times[model_name]:.4f} s")
-            print(f"  Peak RAM (original): {memory_usages[model_name]:.2f} MB")
-            print(f"  Model file size: {model_file_sizes[model_name]:.2f} MB")
-            print(
-                f"  Peak RAM (after reload): {reload_memory_usages[model_name]:.2f} MB",
-            )
-            print("-" * 50)
+            except Exception as e:
+                # continue with other models even if one fails
+                logger.error(f"Error measuring performance for {model_name}: {e!s}")
 
         self._plot_metric("Prediction Time", prediction_times, "Time (s)", "prediction_time")
         self._plot_metric(
@@ -362,49 +348,67 @@ class ResultsHandler:
         with open(self._data_dir / "model_performance.json", "w") as f:
             json.dump(performance_data, f, indent=4)
 
+    def _generate_optuna_plot(self, study, plot_func, model_name, plot_name, **kwargs):
+        fig = plot_func(study, **kwargs)
+        fig.write_image(f"{self._optuna_dir}/{model_name}_{plot_name}.png", scale=2)
+        fig.write_html(f"{self._optuna_dir}/{model_name}_{plot_name}.html")
+
     def plot_optuna_plots(self):
         for model_name, study in self.studies.items():
             try:
-                print(f"\nModel: {model_name}")
+                print(f"Generating Optuna plots for model: {model_name}")
 
                 # Optimization history
-                fig = vis.plot_optimization_history(study, target_name="RMSE")
-                fig.write_image(f"{self._optuna_dir}/{model_name}_opt_history.png", scale=2)
-                fig.write_html(f"{self._optuna_dir}/{model_name}_opt_history.html")
+                self._generate_optuna_plot(
+                    study,
+                    vis.plot_optimization_history,
+                    model_name,
+                    "opt_history",
+                    target_name="RMSE",
+                )
 
                 # Param importances
-                fig = vis.plot_param_importances(study)
-                fig.write_image(
-                    f"{self._optuna_dir}/{model_name}_param_importance.png",
-                    scale=2,
+                self._generate_optuna_plot(
+                    study,
+                    vis.plot_param_importances,
+                    model_name,
+                    "param_importance",
                 )
-                fig.write_html(f"{self._optuna_dir}/{model_name}_param_importance.html")
 
                 # Parallel coordinates
-                fig = vis.plot_parallel_coordinate(study)
-                fig.write_image(f"{self._optuna_dir}/{model_name}_parallel.png", scale=2)
-                fig.write_html(f"{self._optuna_dir}/{model_name}_parallel.html")
+                self._generate_optuna_plot(
+                    study,
+                    vis.plot_parallel_coordinate,
+                    model_name,
+                    "parallel",
+                )
 
                 # Slice plot
-                fig = vis.plot_slice(study, target_name="RMSE")
-                fig.write_image(f"{self._optuna_dir}/{model_name}_slice.png", scale=2)
-                fig.write_html(f"{self._optuna_dir}/{model_name}_slice.html")
+                self._generate_optuna_plot(
+                    study,
+                    vis.plot_slice,
+                    model_name,
+                    "slice",
+                    target_name="RMSE",
+                )
 
                 # Contour plot
                 importances = study.best_trial.params.keys()
                 top_params = list(importances)[:2]
                 if len(top_params) >= 2:
-                    fig = vis.plot_contour(study, params=top_params)
-                    fig.write_image(f"{self._optuna_dir}/{model_name}_contour.png", scale=2)
-                    fig.write_html(f"{self._optuna_dir}/{model_name}_contour.html")
+                    self._generate_optuna_plot(
+                        study,
+                        vis.plot_contour,
+                        model_name,
+                        "contour",
+                        params=top_params,
+                    )
 
                 # EDF plot
-                fig = vis.plot_edf(study)
-                fig.write_image(f"{self._optuna_dir}/{model_name}_edf.png", scale=2)
-                fig.write_html(f"{self._optuna_dir}/{model_name}_edf.html")
+                self._generate_optuna_plot(study, vis.plot_edf, model_name, "edf")
 
             except Exception as e:
-                print(f"Error for model {model_name}: {e}")
+                logger.error(f"Error generating Optuna plots for model {model_name}: {e!s}")
 
     def run_all(self):
         self.save_best_json()
@@ -412,7 +416,7 @@ class ResultsHandler:
         self.print_trials_table()
         self.plot_predictions()
         self.plot_test_value_compare()
-        self.plot_ditribution()
+        self.plot_distribution()
         with tempfile.TemporaryDirectory() as tempdir:
             self.plot_model_performance(Path(tempdir))
 
