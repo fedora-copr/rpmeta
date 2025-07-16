@@ -92,7 +92,7 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
 
     config = Config.get_config(host=host, port=port)
 
-    logger.info(f"Serving on: {config.host}:{config.port}")
+    logger.info("Serving on: %s:%s", config.host, config.port)
 
     uvicorn_config = UvicornConfig(
         app=app,
@@ -151,7 +151,7 @@ def predict(ctx, data: str, output_type: str):
     else:
         input_data = json.loads(data)
 
-    logger.debug(f"Input data received: {input_data}")
+    logger.debug("Input data received: %s", input_data)
 
     predictor = ctx.obj["predictor"]
     prediction = predictor.predict(InputRecord(**input_data))

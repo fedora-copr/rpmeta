@@ -104,7 +104,7 @@ def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
     the predicted build duration in seconds.
     """
 
-    logger.debug(f"Received request for prediction: {input_record}")
+    logger.debug("Received request for prediction: %s", input_record)
 
     if predictor is None:
         logger.error("Predictor not initialized")
@@ -114,7 +114,7 @@ def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
         )
 
     prediction = predictor.predict(input_record)
-    logger.debug(f"Prediction for {input_record.package_name}: {prediction} seconds")
+    logger.debug("Prediction for %s: %s seconds", input_record.package_name, prediction)
     return PredictionResponse(prediction=prediction)
 
 

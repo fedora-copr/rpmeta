@@ -31,7 +31,7 @@ def entry_point(ctx, log_level: str):
 
     logging.basicConfig(level=log_level.upper(), datefmt="[%H:%M:%S]")
 
-    root_logger.debug(f"Log level set to {log_level}")
+    root_logger.debug("Log level set to %s", log_level)
 
     ctx.ensure_object(dict)
     ctx.obj["log_level"] = log_level.upper()

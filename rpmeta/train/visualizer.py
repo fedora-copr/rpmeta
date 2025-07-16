@@ -58,7 +58,7 @@ class ResultsHandler:
         path = self._plot_dir / f"{name}.png"
         fig.savefig(path, dpi=300, bbox_inches="tight")
         plt.close(fig)
-        logger.info(f"Saved figure {name}.png to {self._plot_dir}")
+        logger.info("Saved figure %s.png to %s", name, self._plot_dir)
 
     def _format_parameter(self, value: Any) -> Any:
         if isinstance(value, float):
@@ -316,7 +316,7 @@ class ResultsHandler:
 
             except Exception as e:
                 # continue with other models even if one fails
-                logger.error(f"Error measuring performance for {model_name}: {e!s}")
+                logger.error("Error measuring performance for %s: %s", model_name, str(e))
 
         self._plot_metric("Prediction Time", prediction_times, "Time (s)", "prediction_time")
         self._plot_metric(
@@ -356,7 +356,7 @@ class ResultsHandler:
     def plot_optuna_plots(self):
         for model_name, study in self.studies.items():
             try:
-                print(f"Generating Optuna plots for model: {model_name}")
+                logger.info("Generating Optuna plots for model: %s", model_name)
 
                 # Optimization history
                 self._generate_optuna_plot(
@@ -408,7 +408,7 @@ class ResultsHandler:
                 self._generate_optuna_plot(study, vis.plot_edf, model_name, "edf")
 
             except Exception as e:
-                logger.error(f"Error generating Optuna plots for model {model_name}: {e!s}")
+                logger.error("Error generating Optuna plots for model %s: %s", model_name, str(e))
 
     def run_all(self):
         self.save_best_json()

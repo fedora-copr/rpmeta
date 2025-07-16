@@ -100,6 +100,6 @@ def fetch_data(
         / f"dataset_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
     )
     with open(path, "w") as f:
-        logger.info(f"Saving data to: {path}")
+        logger.info("Saving data to: %s", path)
         json.dump(fetched_data, f, indent=4, default=Record.to_data_frame)
-        logger.info(f"Data saved to: {path}")
+        logger.info("Data saved to: %s", path)

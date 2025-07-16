@@ -29,5 +29,5 @@ def save_joblib(obj: object, result_dir: Path, filename: str) -> Path:
         raise ValueError(f"File {path} already exists, won't overwrite it")
 
     joblib.dump(obj, path)
-    logger.info(f"Saved {obj.__class__.__name__} to {path}")
+    logger.info("Saved %s to %s", obj.__class__.__name__, path)
     return path

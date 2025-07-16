@@ -36,11 +36,11 @@ class Predictor:
             The loaded Predictor instance with the model and category maps
         """
         model = joblib.load(model_path)
-        logger.info(f"Loaded model from {model_path}")
+        logger.info("Loaded model from %s", model_path)
 
         with open(category_maps_path) as f:
             category_maps = json.load(f)
-            logger.info(f"Loaded category maps from {category_maps_path}")
+            logger.info("Loaded category maps from %s", category_maps_path)
 
         return cls(model, category_maps)
 
@@ -98,4 +98,4 @@ class Predictor:
 
         with open(cat_file, "w") as f:
             json.dump(self.category_maps, f, indent=4)
-            logger.info(f"Saved category maps to {cat_file}")
+            logger.info("Saved category maps to %s", cat_file)

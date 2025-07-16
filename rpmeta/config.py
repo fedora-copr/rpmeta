@@ -21,15 +21,15 @@ class Config:
     def _get_result_dir() -> Path:
         for location in RESULT_DIR_LOCATIONS:
             if location.exists():
-                logger.debug(f"Using result dir: {location}")
+                logger.debug("Using result dir: %s", location)
                 return location
 
-            logger.debug(f"Result dir does not exist: {location}")
+            logger.debug("Result dir does not exist: %s", location)
 
         # user location does not exist, create the first one
         default_location = RESULT_DIR_LOCATIONS[0]
         default_location.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Created result dir and using: {default_location}")
+        logger.debug("Created result dir and using: %s", default_location)
         return default_location
 
     @classmethod

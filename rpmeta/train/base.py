@@ -224,7 +224,7 @@ class BaseModel(Model):
         """
         params = self.default_params()
         pipeline = self.create_pipeline(params)
-        logger.info(f"Fitting model {self.name} with default parameters: {params}")
+        logger.info("Fitting model %s with default parameters: %s", self.name, params)
         pipeline.fit(X, y)
         logger.debug("Model fitting complete.")
 
