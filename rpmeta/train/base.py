@@ -9,7 +9,7 @@ import numpy as np
 import optuna
 import pandas as pd
 from optuna import Study, Trial
-from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
+from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -17,6 +17,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from rpmeta.config import Config
 from rpmeta.constants import CATEGORICAL_FEATURES, NUMERICAL_FEATURES
 from rpmeta.helpers import save_joblib
+from rpmeta.train.transformers import TransformedTargetRegressor
 
 logger = logging.getLogger(__name__)
 

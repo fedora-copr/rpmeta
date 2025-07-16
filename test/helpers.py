@@ -12,3 +12,7 @@ def run_rpmeta_cli(params: list[str]) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
     )
+
+
+def power_of_10(x: int) -> int:
+    return 10**x
