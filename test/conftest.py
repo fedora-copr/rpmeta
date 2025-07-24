@@ -8,7 +8,7 @@ import pytest
 
 from rpmeta.config import Config
 from rpmeta.dataset import HwInfo, Record
-from rpmeta.train.base import BaseModel
+from rpmeta.train.base import Model
 from test.helpers import run_rpmeta_cli
 
 
@@ -114,7 +114,7 @@ def example_config():
 
 @pytest.fixture
 def base_model_subclass():
-    class ConcreteModel(BaseModel):
+    class ConcreteModel(Model):
         def _make_regressor(self, params):
             mock_regressor = MagicMock()
             mock_regressor.name = "mock_regressor"

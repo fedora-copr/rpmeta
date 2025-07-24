@@ -42,61 +42,9 @@ class BestModelResult:
 
 
 class Model(ABC):
-    """
-    Defines the interface for a model to be able to perform training and hyperparameter tuning.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        n_jobs: int = -1,
-        random_state: int = 42,
-        verbose: bool = False,
-    ) -> None:
-        """
-        Args:
-            name (str): Name of the model in lowercase
-            n_jobs (int): Number of jobs to run in parallel. -1 means using all processors.
-            random_state (int): Random state for reproducibility
-        """
-        self.name = name.lower()
-        self.n_jobs = n_jobs
-        self.random_state = random_state
-        self.verbose = verbose
-
-    @abstractmethod
-    def create_pipeline(self, params: dict[str, int | float | str]) -> Pipeline:
-        """Return a sklearn Pipeline (including preprocessing and regressor)
-
-        Args:
-            params (dict): Dictionary of parameters for the regressor
-
-        Returns:
-            Pipeline: Sklearn pipeline with preprocessor and regressor
-        """
-        ...
-
-    @staticmethod
-    @abstractmethod
-    def param_space(trial: Trial) -> dict[str, Any]:
-        """Suggest hyperparameters for Optuna trial"""
-        ...
-
-    @property
-    @abstractmethod
-    def default_params(self) -> dict[str, Any]:
-        """Fixed parameters optimized for the desired model, loaded from config"""
-        ...
-
-
-class BaseModel(Model):
     def __init__(self, name: str, config: Config, use_preprocessor: bool = True) -> None:
-        super().__init__(
-            name=name,
-            n_jobs=config.model.n_jobs,
-            random_state=config.model.random_state,
-            verbose=config.model.verbose,
-        )
+        self.name = name.lower()
+
         self.config = config
         self._use_preprocessor = use_preprocessor
 
@@ -111,6 +59,14 @@ class BaseModel(Model):
             )
 
     def create_pipeline(self, params: dict[str, int | float | str]) -> Pipeline:
+        """Return a sklearn Pipeline (including preprocessing and regressor)
+
+        Args:
+            params (dict): Dictionary of parameters for the regressor
+
+        Returns:
+            Pipeline: Sklearn pipeline with preprocessor and regressor
+        """
         reg = self._make_regressor(params)
         ttr = TransformedTargetRegressor(regressor=reg, func=np.log1p, inverse_func=np.expm1)
         if self._use_preprocessor:
@@ -130,11 +86,15 @@ class BaseModel(Model):
 
     @staticmethod
     @abstractmethod
-    def param_space(trial: Trial) -> dict[str, Any]: ...
+    def param_space(trial: Trial) -> dict[str, Any]:
+        """Suggest hyperparameters for Optuna trial"""
+        ...
 
     @property
     @abstractmethod
-    def default_params(self) -> dict[str, Any]: ...
+    def default_params(self) -> dict[str, Any]:
+        """Fixed parameters optimized for the desired model, loaded from config"""
+        ...
 
     def run_study(
         self,

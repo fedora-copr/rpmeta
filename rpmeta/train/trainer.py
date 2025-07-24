@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 
 from rpmeta.config import Config
 from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, DIVIDER, TARGET
-from rpmeta.train.base import BaseModel, BestModelResult, TrialResult
+from rpmeta.train.base import BestModelResult, Model, TrialResult
 from rpmeta.train.models import get_all_model_names, get_all_models
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class ModelTrainer:
         self.model_allowlist = model_allowlist
         logger.info(f"Model allowlist: {self.model_allowlist}")
 
-    def _get_filtered_models(self) -> list[BaseModel]:
+    def _get_filtered_models(self) -> list[Model]:
         models = []
         for model in get_all_models(self.config):
             if model.name.lower() in self.model_allowlist:

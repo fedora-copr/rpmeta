@@ -5,10 +5,10 @@ from typing import Any
 from optuna import Trial
 
 from rpmeta.config import Config
-from rpmeta.train.base import BaseModel
+from rpmeta.train.base import Model
 
 
-class XGBoostModel(BaseModel):
+class XGBoostModel(Model):
     def __init__(self, config: Config):
         super().__init__("xgboost", use_preprocessor=False, config=config)
 
@@ -51,7 +51,7 @@ class XGBoostModel(BaseModel):
         }
 
 
-class LightGBMModel(BaseModel):
+class LightGBMModel(Model):
     def __init__(self, config: Config):
         super().__init__("lightgbm", use_preprocessor=False, config=config)
 
@@ -61,7 +61,7 @@ class LightGBMModel(BaseModel):
         return LGBMRegressor(
             n_jobs=self.config.model.n_jobs,
             random_state=self.config.model.random_state,
-            verbose=1 if self.verbose else -1,
+            verbose=1 if self.config.model.verbose else -1,
             objective="regression",
             **params,
         )
@@ -102,7 +102,7 @@ class LightGBMModel(BaseModel):
         }
 
 
-def get_all_models(config: Config) -> list[BaseModel]:
+def get_all_models(config: Config) -> list[Model]:
     return [
         XGBoostModel(config=config),
         LightGBMModel(config=config),
