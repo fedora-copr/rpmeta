@@ -6,9 +6,9 @@ from typing import Optional
 import click
 from click import Path as ClickPath
 
-from rpmeta.config import Config
+from rpmeta.cli.ctx import Context
 from rpmeta.dataset import InputRecord
-from rpmeta.model import Predictor
+from rpmeta.predictor import Predictor
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
     help="Path to the categories file",
 )
 @click.pass_context
-def model(ctx, model: Path, categories: Path):
+def model(ctx: click.Context, model: Path, categories: Path):
     """
     Subcommand to collect model-related commands.
 
@@ -41,8 +41,8 @@ def model(ctx, model: Path, categories: Path):
     in seconds. If the model does not recognize the package, it will return -1 as a prediction
     and log an error message.
     """
-    ctx.ensure_object(dict)
-    ctx.obj["predictor"] = Predictor.load(model, categories)
+    ctx.ensure_object(Context)
+    ctx.obj.predictor = Predictor.load(model, categories, ctx.obj.config)
 
 
 @model.command("serve")
@@ -55,7 +55,7 @@ def model(ctx, model: Path, categories: Path):
     help="Port to serve the API on",
 )
 @click.pass_context
-def serve(ctx, host: Optional[str], port: Optional[int]):
+def serve(ctx: click.Context, host: Optional[str], port: Optional[int]):
     """
     Start the API server on specified host and port.
 
@@ -88,17 +88,22 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
 
     from rpmeta.server import app, reload_predictor
 
-    reload_predictor(ctx.obj["predictor"])
+    reload_predictor(ctx.obj.predictor)
 
-    config = Config.get_config(host=host, port=port)
+    config = ctx.obj.config
 
-    logger.info("Serving on: %s:%s", config.host, config.port)
+    if host:
+        config.api.host = host
+    if port:
+        config.api.port = port
+
+    logger.info("Serving on: %s:%s", config.api.host, config.api.port)
 
     uvicorn_config = UvicornConfig(
         app=app,
-        host=config.host,
-        port=config.port,
-        log_level=ctx.obj.get("log_level", "INFO").lower(),
+        host=config.api.host,
+        port=config.api.port,
+        log_level=ctx.obj.log_level.lower() if ctx.obj.log_level else "info",
     )
     server = Server(config=uvicorn_config)
     server.run()
@@ -120,7 +125,7 @@ def serve(ctx, host: Optional[str], port: Optional[int]):
     help="Output type for the prediction",
 )
 @click.pass_context
-def predict(ctx, data: str, output_type: str):
+def predict(ctx: click.Context, data: str, output_type: str):
     """
     Make single prediction on the input data.
 
@@ -153,8 +158,7 @@ def predict(ctx, data: str, output_type: str):
 
     logger.debug("Input data received: %s", input_data)
 
-    predictor = ctx.obj["predictor"]
-    prediction = predictor.predict(InputRecord(**input_data))
+    prediction = ctx.obj.predictor.predict(InputRecord(**input_data))
 
     if output_type == "json":
         print(json.dumps({"prediction": prediction}))

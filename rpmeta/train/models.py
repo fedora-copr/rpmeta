@@ -18,8 +18,8 @@ class XGBoostModel(BaseModel):
         return XGBRegressor(
             enable_categorical=True,
             tree_method="hist",
-            n_jobs=self.n_jobs,
-            random_state=self.random_state,
+            n_jobs=self.config.model.n_jobs,
+            random_state=self.config.model.random_state,
             objective="reg:squarederror",
             **params,
         )
@@ -37,17 +37,17 @@ class XGBoostModel(BaseModel):
             "min_child_weight": trial.suggest_float("min_child_weight", 1, 10, log=True),
         }
 
-    @staticmethod
-    def default_params() -> dict[str, Any]:
+    @property
+    def default_params(self) -> dict[str, Any]:
         return {
-            "n_estimators": 651,
-            "learning_rate": 0.2248,
-            "max_depth": 8,
-            "subsample": 0.9789,
-            "colsample_bytree": 0.9835,
-            "reg_alpha": 0.8798,
-            "reg_lambda": 5.8016,
-            "min_child_weight": 1.1275,
+            "n_estimators": self.config.model.xgboost.n_estimators,
+            "learning_rate": self.config.model.xgboost.learning_rate,
+            "max_depth": self.config.model.xgboost.max_depth,
+            "subsample": self.config.model.xgboost.subsample,
+            "colsample_bytree": self.config.model.xgboost.colsample_bytree,
+            "reg_alpha": self.config.model.xgboost.reg_alpha,
+            "reg_lambda": self.config.model.xgboost.reg_lambda,
+            "min_child_weight": self.config.model.xgboost.min_child_weight,
         }
 
 
@@ -59,8 +59,8 @@ class LightGBMModel(BaseModel):
         from lightgbm import LGBMRegressor
 
         return LGBMRegressor(
-            n_jobs=self.n_jobs,
-            random_state=self.random_state,
+            n_jobs=self.config.model.n_jobs,
+            random_state=self.config.model.random_state,
             verbose=1 if self.verbose else -1,
             objective="regression",
             **params,
@@ -86,19 +86,19 @@ class LightGBMModel(BaseModel):
             "max_bin": trial.suggest_int("max_bin", 255, 320),
         }
 
-    @staticmethod
-    def default_params() -> dict[str, Any]:
+    @property
+    def default_params(self) -> dict[str, Any]:
         return {
-            "n_estimators": 1208,
-            "learning_rate": 0.2319,
-            "max_depth": 10,
-            "num_leaves": 849,
-            "min_child_samples": 57,
-            "subsample": 0.6354,
-            "colsample_bytree": 0.9653,
-            "lambda_l1": 0.0005,
-            "lambda_l2": 0.0001,
-            "max_bin": 282,
+            "n_estimators": self.config.model.lightgbm.n_estimators,
+            "learning_rate": self.config.model.lightgbm.learning_rate,
+            "max_depth": self.config.model.lightgbm.max_depth,
+            "num_leaves": self.config.model.lightgbm.num_leaves,
+            "min_child_samples": self.config.model.lightgbm.min_child_samples,
+            "subsample": self.config.model.lightgbm.subsample,
+            "colsample_bytree": self.config.model.lightgbm.colsample_bytree,
+            "lambda_l1": self.config.model.lightgbm.lambda_l1,
+            "lambda_l2": self.config.model.lightgbm.lambda_l2,
+            "max_bin": self.config.model.lightgbm.max_bin,
         }
 
 
@@ -109,5 +109,6 @@ def get_all_models(config: Config) -> list[BaseModel]:
     ]
 
 
-def get_all_model_names(config: Config) -> list[str]:
-    return [model.name.lower() for model in get_all_models(config)]
+def get_all_model_names() -> list[str]:
+    empty_config = Config()
+    return [model.name for model in get_all_models(config=empty_config)]

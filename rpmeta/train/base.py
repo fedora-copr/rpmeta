@@ -82,16 +82,21 @@ class Model(ABC):
         """Suggest hyperparameters for Optuna trial"""
         ...
 
-    @staticmethod
+    @property
     @abstractmethod
-    def default_params() -> dict[str, Any]:
-        """Fixed parameters optimized for the desired model"""
+    def default_params(self) -> dict[str, Any]:
+        """Fixed parameters optimized for the desired model, loaded from config"""
         ...
 
 
 class BaseModel(Model):
     def __init__(self, name: str, config: Config, use_preprocessor: bool = True) -> None:
-        super().__init__(name=name)
+        super().__init__(
+            name=name,
+            n_jobs=config.model.n_jobs,
+            random_state=config.model.random_state,
+            verbose=config.model.verbose,
+        )
         self.config = config
         self._use_preprocessor = use_preprocessor
 
@@ -127,9 +132,9 @@ class BaseModel(Model):
     @abstractmethod
     def param_space(trial: Trial) -> dict[str, Any]: ...
 
-    @staticmethod
+    @property
     @abstractmethod
-    def default_params() -> dict[str, Any]: ...
+    def default_params(self) -> dict[str, Any]: ...
 
     def run_study(
         self,
@@ -223,9 +228,8 @@ class BaseModel(Model):
         Returns:
             Path: Path to the saved model
         """
-        params = self.default_params()
-        pipeline = self.create_pipeline(params)
-        logger.info("Fitting model %s with default parameters: %s", self.name, params)
+        pipeline = self.create_pipeline(self.default_params)
+        logger.info("Fitting model %s with default parameters: %s", self.name, self.default_params)
         pipeline.fit(X, y)
         logger.debug("Model fitting complete.")
 

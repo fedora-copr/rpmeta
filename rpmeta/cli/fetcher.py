@@ -10,7 +10,6 @@ import click
 from click import DateTime
 from click import Path as ClickPath
 
-from rpmeta.config import Config
 from rpmeta.dataset import Record
 
 logger = logging.getLogger(__name__)
@@ -56,7 +55,9 @@ logger = logging.getLogger(__name__)
     ),
 )
 @click.option("--koji", is_flag=True, help="Fetch data from Koji")
+@click.pass_context
 def fetch_data(
+    ctx: click.Context,
     path: Optional[Path],
     start_date: Optional[datetime],
     end_date: Optional[datetime],
@@ -87,16 +88,16 @@ def fetch_data(
 
     fetched_data = []
     if koji:
-        koji_fetcher = KojiFetcher(start_date, end_date, limit)
+        koji_fetcher = KojiFetcher(ctx.obj.config, start_date, end_date, limit)
         fetched_data.extend(koji_fetcher.fetch_data())
 
     if copr:
-        copr_fetcher = CoprFetcher(start_date, end_date, is_copr_instance, limit)
+        copr_fetcher = CoprFetcher(ctx.obj.config, start_date, end_date, is_copr_instance, limit)
         fetched_data.extend(copr_fetcher.fetch_data())
 
     path = (
         path
-        or Config.get_config().result_dir
+        or ctx.obj.config.result_dir
         / f"dataset_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
     )
     with open(path, "w") as f:

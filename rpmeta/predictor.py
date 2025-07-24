@@ -7,6 +7,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from rpmeta.config import Config
 from rpmeta.constants import DIVIDER
 from rpmeta.dataset import InputRecord
 from rpmeta.helpers import save_joblib
@@ -19,18 +20,25 @@ logger = logging.getLogger(__name__)
 
 
 class Predictor:
-    def __init__(self, model: "Pipeline", category_maps: dict[str, list[str]]) -> None:
+    def __init__(
+        self,
+        model: "Pipeline",
+        category_maps: dict[str, list[str]],
+        config: Config,
+    ) -> None:
         self.model = model
         self.category_maps = category_maps
+        self.config = config
 
     @classmethod
-    def load(cls, model_path: Path, category_maps_path: Path) -> "Predictor":
+    def load(cls, model_path: Path, category_maps_path: Path, config: Config) -> "Predictor":
         """
         Load the model from the given path and category maps from the given path.
 
         Args:
             model_path: The path to the model file
             category_maps_path: The path to the category maps file
+            config: The configuration to use
 
         Returns:
             The loaded Predictor instance with the model and category maps
@@ -42,7 +50,7 @@ class Predictor:
             category_maps = json.load(f)
             logger.info("Loaded category maps from %s", category_maps_path)
 
-        return cls(model, category_maps)
+        return cls(model, category_maps, config)
 
     def _preprocess(self, input_data: InputRecord) -> pd.DataFrame:
         df = pd.DataFrame([input_data.to_data_frame()])

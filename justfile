@@ -10,7 +10,7 @@ test_target := "test/unit test/integration"
 test_e2e_target := "test/e2e"
 
 bind_path := "/app/bind"
-minimal_python_version := "3.10"
+minimal_python_version := "3.11"
 
 uv_cmd := "uv --color always"
 uv_sync := uv_cmd + " sync --all-extras --all-groups"
@@ -132,3 +132,8 @@ version-get:
 # Updates the version across all project files
 version-set new_version:
     @python scripts/update_version.py {{new_version}}
+
+# Generates the config.toml file from the Pydantic models
+generate-config:
+    @echo "Generating config.toml from Pydantic models..."
+    @python scripts/generate_config.py

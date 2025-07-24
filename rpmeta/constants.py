@@ -5,10 +5,13 @@ from pathlib import Path
 
 KOJI_HUB_URL = "https://koji.fedoraproject.org/kojihub"
 
+# divider for ram and swap values in the model
+# this is used to transform some of the variables to a more manageable scale
 DIVIDER = 100000
 
 # DO NOT TOUCH THE ORDER of these features, it is important for the model
 # If you are changing the order, you need to retrain the model
+# ideally with optuna to fine tune the parameters once more
 CATEGORICAL_FEATURES = [
     "package_name",
     "version",
@@ -27,12 +30,15 @@ TARGET = "build_duration"
 
 # config defaults
 
-HOST = os.environ.get("HOST", "localhost")
-PORT = int(os.environ.get("PORT", 44882))
-
 USER_RESULT_DIR = (
     Path(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))) / "rpmeta"
 )
 GLOBAL_RESULT_DIR = Path("/var/lib/rpmeta")
 # order is important! user overrides global result dir
 RESULT_DIR_LOCATIONS = [USER_RESULT_DIR, GLOBAL_RESULT_DIR]
+
+# Configuration file locations (order matters)
+CONFIG_LOCATIONS = [
+    Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "rpmeta",
+    Path("/etc/rpmeta"),
+]

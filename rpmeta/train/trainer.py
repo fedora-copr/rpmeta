@@ -44,12 +44,12 @@ class ModelTrainer:
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             self.X,
             self.y,
-            test_size=0.2,
-            random_state=42,
+            test_size=self.config.model.test_size,
+            random_state=self.config.model.random_state,
         )
 
         if model_allowlist is None:
-            model_allowlist = set(get_all_model_names(self.config))
+            model_allowlist = set(get_all_model_names())
 
         self.model_allowlist = model_allowlist
         logger.info(f"Model allowlist: {self.model_allowlist}")
@@ -88,8 +88,12 @@ class ModelTrainer:
         logger.info("Preprocessing dataset")
         self.df["version"] = self.df["version"].str.replace(r"[\^~].*", "", regex=True)
         self.df[TARGET] = np.round(self.df[TARGET]).astype(int)
-        self.df["ram"] = np.round(self.df["ram"] / DIVIDER).astype(int)
-        self.df["swap"] = np.round(self.df["swap"] / DIVIDER).astype(int)
+        self.df["ram"] = np.round(
+            self.df["ram"] / DIVIDER,
+        ).astype(int)
+        self.df["swap"] = np.round(
+            self.df["swap"] / DIVIDER,
+        ).astype(int)
         self.df = self.df[(self.df[TARGET] >= 15) & (self.df[TARGET] <= 115000)]
 
         logger.info("Removing duplicates and NaN values")

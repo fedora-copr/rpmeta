@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from rpmeta import __version__
 from rpmeta.dataset import InputRecord
-from rpmeta.model import Predictor
+from rpmeta.predictor import Predictor
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +146,9 @@ def predict_endpoint(input_record: InputRecord) -> PredictionResponse:
 def reload_predictor(new_predictor: Predictor) -> None:
     """
     Reload the model and categories map for the API server.
+
+    Args:
+        new_predictor: The predictor instance to use
     """
     # This allows the model to be loaded into RAM only once when the server starts,
     # and can be called to reload the model if needed without restarting the server.

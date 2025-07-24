@@ -2,10 +2,13 @@ import json
 from pathlib import Path
 from subprocess import Popen
 from time import sleep
+from unittest.mock import MagicMock
 
 import pytest
 
+from rpmeta.config import Config
 from rpmeta.dataset import HwInfo, Record
+from rpmeta.train.base import BaseModel
 from test.helpers import run_rpmeta_cli
 
 
@@ -97,3 +100,32 @@ def dataset_record(hw_info, koji_build):
         build_duration=893,
         hw_info=hw_info,
     )
+
+
+@pytest.fixture
+def config_file():
+    return (Path(__file__).parent / "data" / "config.toml").resolve(strict=True)
+
+
+@pytest.fixture
+def example_config():
+    return Config(result_dir=Path("/tmp/rpmeta_results"))
+
+
+@pytest.fixture
+def base_model_subclass():
+    class ConcreteModel(BaseModel):
+        def _make_regressor(self, params):
+            mock_regressor = MagicMock()
+            mock_regressor.name = "mock_regressor"
+            return mock_regressor
+
+        @staticmethod
+        def param_space(trial):
+            return {"param1": 1, "param2": 2}
+
+        @property
+        def default_params(self):
+            return {"param1": 10, "param2": 20}
+
+    return ConcreteModel

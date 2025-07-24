@@ -1,0 +1,70 @@
+# RPMeta Example Configuration File
+# Configuration is taken from ~/.config/rpmeta/config.toml or /etc/rpmeta/config.toml
+# or specify the path when running rpmeta with --config /path/to/config.toml
+
+
+# Complete configuration model for RPMeta
+
+result_dir = "/var/lib/rpmeta" # Directory for storing results and trained models
+
+
+# API server configuration
+[api]
+host = "localhost" # Hostname to bind the API server to
+port = 44882 # Port to bind the API server to
+debug = false # Enable debug mode
+
+
+# Koji client configuration
+[koji]
+hub_url = "https://koji.fedoraproject.org/kojihub" # Koji hub URL
+
+
+# Copr client configuration
+[copr]
+api_url = "https://copr.fedorainfracloud.org/api_3" # Copr API URL
+
+
+# Machine learning model configuration
+[model]
+random_state = 42 # Random state seed for reproducibility
+n_jobs = -1 # Number of jobs for parallel processing, -1 means use all available cores
+test_size = 0.2 # Fraction of data to use for testing
+verbose = false # Enable verbose output during model training and evaluation
+
+# XGBoost model parameters
+[model.xgboost]
+n_estimators = 651 # Number of boosting rounds
+learning_rate = 0.2248 # Step size shrinkage used to prevent overfitting
+max_depth = 8 # Maximum depth of a tree
+subsample = 0.9789 # Subsample ratio of the training instances
+colsample_bytree = 0.9835 # Subsample ratio of columns when constructing each tree
+reg_alpha = 0.8798 # L1 regularization term on weights
+reg_lambda = 5.8016 # L2 regularization term on weights
+min_child_weight = 1.1275 # Minimum sum of instance weight needed in a child
+[model.xgboost.params] # Optional model parameters
+objective = "reg:squarederror"
+tree_method = "hist"
+
+# LightGBM model parameters
+[model.lightgbm]
+n_estimators = 1208 # Number of boosting rounds
+learning_rate = 0.2319 # Step size shrinkage used to prevent overfitting
+max_depth = 10 # Maximum depth of a tree
+num_leaves = 849 # Maximum tree leaves for base learners
+min_child_samples = 57 # Minimum number of data needed in a leaf
+subsample = 0.6354 # Subsample ratio of the training instances
+colsample_bytree = 0.9653 # Subsample ratio of columns when constructing each tree
+lambda_l1 = 0.0005 # L1 regularization term on weights
+lambda_l2 = 0.0001 # L2 regularization term on weights
+max_bin = 282 # Max number of bins that feature values will be bucketed in
+[model.lightgbm.params] # Optional model parameters
+objective = "reg:squarederror"
+tree_method = "hist"
+
+
+# Logging configuration
+[logging]
+format = "[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s" # Log format string
+datefmt = "%Y-%m-%d %H:%M:%S" # Date format for log timestamps
+file = "/var/log/rpmeta.log" # Path to the log file. If None, logs will be written to stderr

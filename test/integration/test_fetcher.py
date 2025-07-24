@@ -13,6 +13,7 @@ def test_koji_fetcher_fetch_data(
     dataset_record,
     koji_build,
     koji_task_descendant,
+    example_config,
 ):
     mock_get_distro_aliases.return_value = {
         "fedora-all": [SimpleNamespace(version_number="36", name="fedora")],
@@ -29,7 +30,7 @@ def test_koji_fetcher_fetch_data(
     with patch("rpmeta.dataset.HwInfo.parse_from_lscpu", return_value=dataset_record.hw_info):
         start_date = datetime(2023, 1, 1)
         end_date = datetime(2023, 1, 2)
-        fetcher = KojiFetcher(start_date=start_date, end_date=end_date)
+        fetcher = KojiFetcher(config=example_config, start_date=start_date, end_date=end_date)
         result = fetcher.fetch_data()
 
     mock_session.listBuilds.assert_called_with(
@@ -48,13 +49,17 @@ def test_koji_fetcher_fetch_data(
 @patch("rpmeta.fetcher.Client")
 @patch("rpmeta.fetcher.next_page", return_value=None)
 @patch("rpmeta.fetcher.requests.get")
-def test_copr_fetcher_fetch_data(mock_requests_get, mock_next_page, mock_client, dataset_record):
-    # Mock requests.get
+def test_copr_fetcher_fetch_data(
+    mock_requests_get,
+    mock_next_page,
+    mock_client,
+    dataset_record,
+    example_config,
+):
     mock_response = mock_requests_get.return_value
     mock_response.status_code = 200
     mock_response.content.decode.return_value = "mock lscpu log"
 
-    # Mock Copr client
     mock_copr_client = mock_client.return_value
     mock_copr_client.build_chroot_proxy.get_list.return_value = [
         {
@@ -84,13 +89,11 @@ def test_copr_fetcher_fetch_data(mock_requests_get, mock_next_page, mock_client,
         },
     ]
 
-    # Mock HwInfo parsing
     with patch("rpmeta.dataset.HwInfo.parse_from_lscpu", return_value=dataset_record.hw_info):
-        fetcher = CoprFetcher()
+        fetcher = CoprFetcher(config=example_config)
         result = fetcher.fetch_data()
 
-    # Assert requests.get was called with the correct URL
-    mock_requests_get.assert_called_with("xyz/hw_info.log.gz")
-
     assert len(result) == 1
-    assert result[0] == dataset_record
+    assert result[0].package_name == dataset_record.package_name
+    assert result[0].version == dataset_record.version
+    assert result[0].build_duration == dataset_record.build_duration

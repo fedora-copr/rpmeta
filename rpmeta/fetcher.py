@@ -13,7 +13,7 @@ from copr.v3 import Client
 from copr.v3.pagination import next_page
 from fedora_distro_aliases import get_distro_aliases
 
-from rpmeta.constants import KOJI_HUB_URL
+from rpmeta.config import Config
 from rpmeta.dataset import HwInfo, Record
 
 logger = logging.getLogger(__name__)
@@ -39,10 +39,12 @@ def _get_distro_aliases_retry(retries=5, delay=20) -> dict:
 class Fetcher(ABC):
     def __init__(
         self,
+        config: Config,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = 10000,
     ) -> None:
+        self.config = config
         self.start_date = None
         if start_date:
             self.start_date = int(start_date.timestamp())
@@ -68,14 +70,15 @@ class Fetcher(ABC):
 class KojiFetcher(Fetcher):
     def __init__(
         self,
+        config: Config,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         limit: int = 10000,
     ) -> None:
-        super().__init__(start_date, end_date, limit)
+        super().__init__(config, start_date, end_date, limit)
 
-        logger.info(f"Initializing KojiFetcher instance: {KOJI_HUB_URL}")
-        self._koji_session = koji.ClientSession(KOJI_HUB_URL)
+        logger.info(f"Initializing KojiFetcher instance: {self.config.koji.hub_url}")
+        self._koji_session = koji.ClientSession(self.config.koji.hub_url)
 
         self._host_hw_info_map: dict[int, HwInfo] = {}
         self._current_page = 0
@@ -219,14 +222,16 @@ class KojiFetcher(Fetcher):
 class CoprFetcher(Fetcher):
     def __init__(
         self,
+        config: Config,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         is_copr_instance: bool = False,
         limit: int = 10000,
     ) -> None:
-        super().__init__(start_date, end_date, limit)
+        super().__init__(config, start_date, end_date, limit)
+
         self.is_copr_instance = is_copr_instance
-        self.client = Client({"copr_url": "https://copr.fedorainfracloud.org"})
+        self.client = Client({"copr_url": self.config.copr.api_url})
 
     def _fetch_copr_data_from_instance(self) -> list[Record]:
         from copr_common.enums import StatusEnum

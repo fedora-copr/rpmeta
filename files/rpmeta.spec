@@ -79,6 +79,9 @@ sed -i '/kaleido==0.2.1/d' pyproject.toml
 %pyproject_install
 %pyproject_save_files %{name}
 
+mkdir -p %{buildroot}%{_sysconfdir}/%{name}
+install -m 644 -p files/config.toml.example %{buildroot}%{_sysconfdir}/%{name}/config.toml.example
+
 # generate man 1 pages
 PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildroot}%{_mandir}/man1
 
@@ -88,6 +91,7 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildro
 %doc README.md
 %{_mandir}/man1/%{name}*.1*
 %{_bindir}/%{name}
+%{_sysconfdir}/%{name}/config.toml.example
 
 
 %changelog
