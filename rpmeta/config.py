@@ -276,13 +276,22 @@ class ConfigManager:
         """
         config_data = {}
         if config_file:
+            logger.info("Loading configuration from specified file: %s", config_file)
             config_data = cls._load_from_file(config_file)
         else:
             location = cls._find_config_file()
             if location:
+                logger.info("Loading configuration from detected file: %s", location)
                 config_data = cls._load_from_file(location)
+            else:
+                logger.info("No configuration file found, using defaults")
+
+        if result_dir:
+            logger.info("Using explicitly provided result directory: %s", result_dir)
 
         result_dir = result_dir or config_data.get("result_dir", cls._get_result_dir())
+        logger.debug("Setting result directory to: %s", result_dir)
         config_data.setdefault("result_dir", result_dir)
 
+        logger.debug("Constructed configuration data: %s", config_data)
         return Config(**config_data)

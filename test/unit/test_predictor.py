@@ -7,21 +7,27 @@ import pandas as pd
 from rpmeta.predictor import Predictor
 
 
-@patch("rpmeta.predictor.joblib.load")
+@patch("rpmeta.store.ModelStorage.get_model")
+@patch("joblib.load")
 @patch(
     "builtins.open",
     new_callable=mock_open,
     read_data='{"package_name": ["pkg1", "pkg2"], "feature": ["a", "b"]}',
 )
-def test_predictor_load(mock_file, mock_load, example_config):
+def test_predictor_load(mock_file, mock_load, mock_get_model, example_config):
     mock_model = MagicMock()
     mock_load.return_value = mock_model
-    predictor = Predictor.load("model_path", "category_maps_path", example_config)
+    mock_get_model.return_value = mock_model
+
+    predictor = Predictor.load(
+        model_path=Path("model_path"),
+        model_name="test_model",
+        category_maps_path=Path("category_maps_path"),
+        config=example_config,
+    )
     assert isinstance(predictor, Predictor)
     assert predictor.model == mock_model
     assert predictor.category_maps == {"package_name": ["pkg1", "pkg2"], "feature": ["a", "b"]}
-    mock_load.assert_called_once_with("model_path")
-    mock_file.assert_called_once_with("category_maps_path")
 
 
 def test_preprocess_applies_category_and_round(example_config):

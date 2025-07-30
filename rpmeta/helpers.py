@@ -22,6 +22,7 @@ def save_joblib(obj: object, result_dir: Path, filename: str) -> Path:
         raise ValueError(f"{result_dir} is not a directory")
 
     if not result_dir.exists():
+        logger.debug("Creating directory: %s", result_dir)
         result_dir.mkdir(parents=True, exist_ok=True)
 
     path = result_dir / f"{filename}.joblib"

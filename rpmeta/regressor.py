@@ -6,7 +6,10 @@ predictions, without requiring scikit-learn. The rest of the interface is just
 calling the underlying regressor methods directly.
 """
 
+import logging
 from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 
 class TransformedTargetRegressor:
@@ -41,11 +44,14 @@ class TransformedTargetRegressor:
         # Only forward to regressor for non-special attributes to avoid recursion
         if name.startswith("__") and name.endswith("__"):
             raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
+
+        logger.debug("Forwarding attribute '%s' to the underlying regressor", name)
         return getattr(self.regressor, name)
 
     def __call__(self, *args, **kwargs):
         # forward calls to the underlying regressor.
         if callable(self.regressor):
+            logger.debug("Calling the underlying regressor with args: %s, kwargs: %s", args, kwargs)
             return self.regressor.__call__(*args, **kwargs)
 
         raise TypeError("The underlying regressor is not callable")

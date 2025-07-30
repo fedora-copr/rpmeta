@@ -1,20 +1,16 @@
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-import joblib
 import numpy as np
 import pandas as pd
 
 from rpmeta.config import Config
-from rpmeta.constants import DIVIDER
+from rpmeta.constants import DIVIDER, ModelEnum
 from rpmeta.dataset import InputRecord
 from rpmeta.helpers import save_joblib
-
-if TYPE_CHECKING:
-    from sklearn.pipeline import Pipeline
-
+from rpmeta.regressor import TransformedTargetRegressor
+from rpmeta.store import ModelStorage
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +18,7 @@ logger = logging.getLogger(__name__)
 class Predictor:
     def __init__(
         self,
-        model: "Pipeline",
+        model: TransformedTargetRegressor,
         category_maps: dict[str, list[str]],
         config: Config,
     ) -> None:
@@ -31,24 +27,32 @@ class Predictor:
         self.config = config
 
     @classmethod
-    def load(cls, model_path: Path, category_maps_path: Path, config: Config) -> "Predictor":
+    def load(
+        cls,
+        model_path: Path,
+        model_name: ModelEnum,
+        category_maps_path: Path,
+        config: Config,
+    ) -> "Predictor":
         """
         Load the model from the given path and category maps from the given path.
 
         Args:
-            model_path: The path to the model file
+            model_path: The path to the model directory
+            model_name: The name of the model type
             category_maps_path: The path to the category maps file
             config: The configuration to use
 
         Returns:
             The loaded Predictor instance with the model and category maps
         """
-        model = joblib.load(model_path)
-        logger.info("Loaded model from %s", model_path)
+        logger.info("Loading model %s from %s", model_name, model_path)
+        model_storage = ModelStorage(model_name)
+        model = model_storage.get_model(model_path)
 
+        logger.info("Loading category maps from %s", category_maps_path)
         with open(category_maps_path) as f:
             category_maps = json.load(f)
-            logger.info("Loaded category maps from %s", category_maps_path)
 
         return cls(model, category_maps, config)
 
@@ -98,12 +102,15 @@ class Predictor:
             model_name: The name of the model file
             category_maps_name: The name of the category maps file
         """
+        logger.info("Saving predictor to %s", result_dir)
+
         cat_file = result_dir / f"{category_maps_name}.json"
         if cat_file.exists():
             raise ValueError(f"File {cat_file} already exists, won't overwrite it")
 
         save_joblib(self.model, result_dir, model_name)
 
+        logger.info("Saving %d category maps to %s", len(self.category_maps), cat_file)
         with open(cat_file, "w") as f:
             json.dump(self.category_maps, f, indent=4)
             logger.info("Saved category maps to %s", cat_file)

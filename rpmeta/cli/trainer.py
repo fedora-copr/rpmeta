@@ -6,7 +6,9 @@ import pandas as pd
 from click import Path as ClickPath
 
 from rpmeta.cli.ctx import Context
-from rpmeta.train.models import get_all_model_names
+from rpmeta.constants import ModelEnum
+from rpmeta.trainer.trainer import ModelTrainingManager
+from rpmeta.trainer.visualizer import ResultsHandler
 
 
 @click.group("train")
@@ -33,27 +35,30 @@ from rpmeta.train.models import get_all_model_names
 @click.option(
     "-m",
     "--model-allowlist",
-    type=click.Choice(get_all_model_names(), case_sensitive=False),
+    type=click.Choice(ModelEnum, case_sensitive=False),
     multiple=True,
-    default=get_all_model_names(),
+    default=set(ModelEnum.get_all_model_names()),
     show_default=True,
     callback=lambda _, __, values: set(values) if values else None,
     help="List of models to train",
 )
 @click.pass_context
-def train(ctx: click.Context, dataset: Path, result_dir: Optional[Path], model_allowlist: set[str]):
+def train(
+    ctx: click.Context,
+    dataset: Path,
+    result_dir: Optional[Path],
+    model_allowlist: set[ModelEnum],
+):
     """
     Subcommand to train the desired models on the input dataset.
     """
-    from rpmeta.train.trainer import ModelTrainer
-
     ctx.ensure_object(Context)
 
     config = ctx.obj.config
     if result_dir:
         config.result_dir = result_dir
 
-    trainer = ModelTrainer(
+    trainer = ModelTrainingManager(
         data=pd.read_json(dataset),
         model_allowlist=model_allowlist,
         config=config,
@@ -75,8 +80,6 @@ def tune(ctx: click.Context, n_trials: int):
     """
     Run hyperparameter tuning for all models in the allowlist using Optuna framework.
     """
-    from rpmeta.train.visualizer import ResultsHandler
-
     trainer = ctx.obj.trainer
     all_results, best_models, studies = trainer.run_all_studies(n_trials=n_trials)
     result_handler = ResultsHandler(

@@ -1,13 +1,12 @@
 import logging
+import sys
 from pathlib import Path
 from typing import Any, Optional
 
 import click
 
 from rpmeta.cli.ctx import Context
-from rpmeta.cli.fetcher import fetch_data
 from rpmeta.cli.model import model
-from rpmeta.cli.trainer import train
 from rpmeta.config import ConfigManager
 
 
@@ -56,7 +55,7 @@ def entry_point(ctx: click.Context, log_level: str, config: Optional[Path]):
         console.setFormatter(
             logging.Formatter(app_config.logging.format, datefmt=app_config.logging.datefmt),
         )
-        logging.getLogger("").addHandler(console)
+        root_logger.addHandler(console)
     else:
         # Configure logging to console only
         logging.basicConfig(
@@ -73,9 +72,33 @@ def entry_point(ctx: click.Context, log_level: str, config: Optional[Path]):
     ctx.obj.log_level = log_level_value
 
 
-entry_point.add_command(fetch_data)
-entry_point.add_command(train)
+def _register_optional_command(import_path: str, command_name: str) -> None:
+    """
+    Dynamically register a command if the import path exists.
+    """
+    try:
+        logger = logging.getLogger(__name__)
+        logger.debug("Attempting to register command: %s from %s", command_name, import_path)
+        module = __import__(import_path, fromlist=[command_name])
+        command = getattr(module, command_name)
+        entry_point.add_command(command)
+    except (ImportError, AttributeError):
+
+        @entry_point.command(command_name)
+        def placeholder_command():
+            """Placeholder command, not available in this installation."""
+            click.echo(f"Error: {command_name} command is not available in this installation.")
+            click.echo("Install the required package to enable this command.")
+            click.echo("Check the documentation for more details on how to install it.")
+            sys.exit(1)
+
+
+# base commands
 entry_point.add_command(model)
+
+# optional commands
+_register_optional_command("rpmeta.cli.fetcher", "fetch_data")
+_register_optional_command("rpmeta.cli.trainer", "train")
 
 
 if __name__ == "__main__":

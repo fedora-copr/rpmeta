@@ -4,18 +4,21 @@ from subprocess import Popen
 from time import sleep
 from unittest.mock import MagicMock
 
+import joblib
 import pytest
 
 from rpmeta.config import Config
+from rpmeta.constants import ModelEnum
 from rpmeta.dataset import HwInfo, Record
-from rpmeta.train.base import Model
+from rpmeta.trainer.base import Model
 from test.helpers import run_rpmeta_cli
 
 
-@pytest.fixture
-def model_and_types(tmp_path_factory):
+@pytest.fixture(params=ModelEnum.get_all_model_names())
+def model_and_types(request, tmp_path_factory):
+    model_name = request.param
     dataset_path = Path(__file__).parent / "data" / "dataset_train.json"
-    result_dir = tmp_path_factory.mktemp("models")
+    result_dir = tmp_path_factory.mktemp(f"models_{model_name}")
 
     result = run_rpmeta_cli(
         [
@@ -25,7 +28,7 @@ def model_and_types(tmp_path_factory):
             "--result-dir",
             str(result_dir),
             "--model-allowlist",
-            "lightgbm",
+            model_name,
             "run",
         ],
     )
@@ -37,20 +40,22 @@ def model_and_types(tmp_path_factory):
     assert cat_dtypes_files[0].read_text(), "Category dtypes file is empty"
     assert cat_dtypes_files[0].suffix == ".json", "Category dtypes file is not a JSON file"
 
-    return Path(result.stdout.strip()), cat_dtypes_files[0]
+    return Path(result.stdout.strip()), cat_dtypes_files[0], model_name
 
 
 @pytest.fixture
 def api_server(model_and_types):
-    trained_model_file, category_dtypes_file = model_and_types
+    trained_model_dir, category_dtypes_file, model_name = model_and_types
     api_server = Popen(
         [
             "python3",
             "-m",
             "rpmeta.cli.main",
             "model",
-            "--model",
-            str(trained_model_file),
+            "--model-dir",
+            str(trained_model_dir),
+            "--model-name",
+            model_name,
             "--categories",
             str(category_dtypes_file),
             "serve",
@@ -118,14 +123,15 @@ def base_model_subclass():
         def _make_regressor(self, params):
             mock_regressor = MagicMock()
             mock_regressor.name = "mock_regressor"
+            for key, value in params.items():
+                setattr(mock_regressor, key, value)
+
             return mock_regressor
 
-        @staticmethod
-        def param_space(trial):
-            return {"param1": 1, "param2": 2}
+        def save_model(self, regressor, path):
+            joblib.dump(regressor, path)
 
-        @property
-        def default_params(self):
-            return {"param1": 10, "param2": 20}
+        def load_model(self, path):
+            return joblib.load(path)
 
     return ConcreteModel

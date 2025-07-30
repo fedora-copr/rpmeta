@@ -7,21 +7,23 @@ from test.helpers import run_rpmeta_cli
 
 
 def test_train(model_and_types):
-    trained_model_file, cat_dtypes_file = model_and_types
-    assert trained_model_file.exists(), "Model was not saved"
-    assert trained_model_file.stat().st_size > 0, "Model is empty"
+    trained_model_file, cat_dtypes_file, model_name = model_and_types
+    assert trained_model_file.exists(), f"{model_name} model was not saved"
+    assert trained_model_file.stat().st_size > 0, f"{model_name} model is empty"
     assert cat_dtypes_file.exists(), "Category dtypes file was not saved"
     assert cat_dtypes_file.stat().st_size > 0, "Category dtypes file is empty"
     assert cat_dtypes_file.suffix == ".json", "Category dtypes file is not a JSON file"
 
 
 def test_predict(model_and_types):
-    trained_model_file, cat_dtypes_file = model_and_types
+    trained_model_file, cat_dtypes_file, model_name = model_and_types
     dataset_path = Path(__file__).parent.parent / "data" / "dataset_predict.json"
     cmd = [
         "model",
-        "--model",
+        "--model-dir",
         str(trained_model_file),
+        "--model-name",
+        model_name,
         "--categories",
         str(cat_dtypes_file),
         "predict",

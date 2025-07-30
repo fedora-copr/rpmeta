@@ -5,24 +5,13 @@ from typing import Any
 from optuna import Trial
 
 from rpmeta.config import Config
-from rpmeta.train.base import Model
+from rpmeta.model import LightGBMModel, XGBoostModel
+from rpmeta.trainer.base import ModelTrainer
 
 
-class XGBoostModel(Model):
-    def __init__(self, config: Config):
-        super().__init__("xgboost", use_preprocessor=False, config=config)
-
-    def _make_regressor(self, params: dict[str, int | float | str]):
-        from xgboost import XGBRegressor
-
-        return XGBRegressor(
-            enable_categorical=True,
-            tree_method="hist",
-            n_jobs=self.config.model.n_jobs,
-            random_state=self.config.model.random_state,
-            objective="reg:squarederror",
-            **params,
-        )
+class XGBoostModelTrainer(XGBoostModel, ModelTrainer):
+    def __init__(self, config: Config) -> None:
+        super().__init__(config)
 
     @staticmethod
     def param_space(trial: Trial) -> dict[str, Any]:
@@ -51,20 +40,9 @@ class XGBoostModel(Model):
         }
 
 
-class LightGBMModel(Model):
+class LightGBMModelTrainer(LightGBMModel, ModelTrainer):
     def __init__(self, config: Config):
-        super().__init__("lightgbm", use_preprocessor=False, config=config)
-
-    def _make_regressor(self, params: dict[str, int | float | str]):
-        from lightgbm import LGBMRegressor
-
-        return LGBMRegressor(
-            n_jobs=self.config.model.n_jobs,
-            random_state=self.config.model.random_state,
-            verbose=1 if self.config.model.verbose else -1,
-            objective="regression",
-            **params,
-        )
+        super().__init__(config)
 
     @staticmethod
     def param_space(trial: Trial) -> dict[str, Any]:
@@ -102,13 +80,11 @@ class LightGBMModel(Model):
         }
 
 
-def get_all_models(config: Config) -> list[Model]:
+def get_all_model_trainers(config: Config) -> list[ModelTrainer]:
+    """
+    Get all available model trainers based on the configuration.
+    """
     return [
-        XGBoostModel(config=config),
-        LightGBMModel(config=config),
+        XGBoostModelTrainer(config),
+        LightGBMModelTrainer(config),
     ]
-
-
-def get_all_model_names() -> list[str]:
-    empty_config = Config()
-    return [model.name for model in get_all_models(config=empty_config)]

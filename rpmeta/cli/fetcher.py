@@ -11,6 +11,7 @@ from click import DateTime
 from click import Path as ClickPath
 
 from rpmeta.dataset import Record
+from rpmeta.fetcher.fetcher import CoprFetcher, KojiFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +72,6 @@ def fetch_data(
 
     The dataset output is ready to be fed into the training process.
     """
-    from rpmeta.fetcher import CoprFetcher, KojiFetcher
-
     if not (copr or koji):
         raise click.UsageError("At least one of --copr or --koji must be provided")
 
@@ -80,7 +79,6 @@ def fetch_data(
         raise click.UsageError("Flag --is-copr-instance can only be used with --copr")
 
     if copr and is_copr_instance and (os.getuid() == 0 or getpass.getuser() != "copr-fe"):
-        logger.error("CoprFetcher should be run as the 'copr-fe' user inside Copr instance")
         raise click.UsageError(
             "CoprFetcher should be run as the 'copr-fe' user. Please run:\n"
             "$ sudo -u copr-fe rpmeta fetch-data ...",

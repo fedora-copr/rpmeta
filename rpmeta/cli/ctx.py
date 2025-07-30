@@ -3,7 +3,7 @@ from typing import Optional
 
 from rpmeta.config import Config
 from rpmeta.predictor import Predictor
-from rpmeta.train.trainer import ModelTrainer
+from rpmeta.trainer.trainer import ModelTrainingManager
 
 
 @dataclass
@@ -15,4 +15,4 @@ class Context:
     config: Optional[Config] = None
     predictor: Optional[Predictor] = None
     log_level: Optional[str] = None
-    trainer: Optional[ModelTrainer] = None
+    trainer: Optional[ModelTrainingManager] = None

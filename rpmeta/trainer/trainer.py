@@ -10,19 +10,19 @@ from optuna import Study
 from sklearn.model_selection import train_test_split
 
 from rpmeta.config import Config
-from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, DIVIDER, TARGET
-from rpmeta.train.base import BestModelResult, Model, TrialResult
-from rpmeta.train.models import get_all_model_names, get_all_models
+from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, DIVIDER, TARGET, ModelEnum
+from rpmeta.trainer.base import BestModelResult, ModelTrainer, TrialResult
+from rpmeta.trainer.models import get_all_model_trainers
 
 logger = logging.getLogger(__name__)
 
 
-class ModelTrainer:
+class ModelTrainingManager:
     def __init__(
         self,
         data: pd.DataFrame,
         config: Config,
-        model_allowlist: Optional[set[str]] = None,
+        model_allowlist: Optional[set[ModelEnum]] = None,
     ) -> None:
         self.df = data.copy()
         self.config = config
@@ -49,14 +49,16 @@ class ModelTrainer:
         )
 
         if model_allowlist is None:
-            model_allowlist = set(get_all_model_names())
+            model_allowlist_str = set(ModelEnum.get_all_model_names())
+        else:
+            model_allowlist_str = {model.value for model in model_allowlist}
 
-        self.model_allowlist = model_allowlist
+        self.model_allowlist = model_allowlist_str
         logger.info(f"Model allowlist: {self.model_allowlist}")
 
-    def _get_filtered_models(self) -> list[Model]:
+    def _get_filtered_models(self) -> list[ModelTrainer]:
         models = []
-        for model in get_all_models(self.config):
+        for model in get_all_model_trainers(self.config):
             if model.name.lower() in self.model_allowlist:
                 models.append(model)
 

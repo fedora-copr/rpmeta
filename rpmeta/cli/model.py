@@ -7,6 +7,7 @@ import click
 from click import Path as ClickPath
 
 from rpmeta.cli.ctx import Context
+from rpmeta.constants import ModelEnum
 from rpmeta.dataset import InputRecord
 from rpmeta.predictor import Predictor
 
@@ -16,10 +17,17 @@ logger = logging.getLogger(__name__)
 @click.group("model")
 @click.option(
     "-m",
-    "--model",
-    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
+    "--model-dir",
+    type=ClickPath(exists=True, dir_okay=True, resolve_path=True, file_okay=False, path_type=Path),
     required=True,
-    help="Path to the model file",
+    help="Path to the model directory",
+)
+@click.option(
+    "-n",
+    "--model-name",
+    type=click.Choice(ModelEnum, case_sensitive=False),
+    required=True,
+    help="Type of the model to use",
 )
 @click.option(
     "-c",
@@ -29,7 +37,7 @@ logger = logging.getLogger(__name__)
     help="Path to the categories file",
 )
 @click.pass_context
-def model(ctx: click.Context, model: Path, categories: Path):
+def model(ctx: click.Context, model_dir: Path, model_name: ModelEnum, categories: Path):
     """
     Subcommand to collect model-related commands.
 
@@ -42,7 +50,7 @@ def model(ctx: click.Context, model: Path, categories: Path):
     and log an error message.
     """
     ctx.ensure_object(Context)
-    ctx.obj.predictor = Predictor.load(model, categories, ctx.obj.config)
+    ctx.obj.predictor = Predictor.load(model_dir, model_name, categories, ctx.obj.config)
 
 
 @model.command("serve")
@@ -54,8 +62,14 @@ def model(ctx: click.Context, model: Path, categories: Path):
     default=None,
     help="Port to serve the API on",
 )
+@click.option(
+    "--debug",
+    is_flag=True,
+    default=False,
+    help="Enable debug mode",
+)
 @click.pass_context
-def serve(ctx: click.Context, host: Optional[str], port: Optional[int]):
+def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: bool):
     """
     Start the API server on specified host and port.
 
@@ -96,6 +110,8 @@ def serve(ctx: click.Context, host: Optional[str], port: Optional[int]):
         config.api.host = host
     if port:
         config.api.port = port
+    if debug:
+        config.api.debug = debug
 
     logger.info("Serving on: %s:%s", config.api.host, config.api.port)
 

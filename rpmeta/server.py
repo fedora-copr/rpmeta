@@ -107,7 +107,6 @@ def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
     logger.debug("Received request for prediction: %s", input_record)
 
     if predictor is None:
-        logger.error("Predictor not initialized")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Model not initialized. Server not ready for predictions.",

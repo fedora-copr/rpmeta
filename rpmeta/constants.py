@@ -1,4 +1,5 @@
 import os
+from enum import StrEnum
 from pathlib import Path
 
 # constants
@@ -42,3 +43,14 @@ CONFIG_LOCATIONS = [
     Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "rpmeta",
     Path("/etc/rpmeta"),
 ]
+
+# enums
+
+
+class ModelEnum(StrEnum):
+    LIGHTGBM = "lightgbm"
+    XGBOOST = "xgboost"
+
+    @classmethod
+    def get_all_model_names(cls) -> list[str]:
+        return [model.value for model in cls]

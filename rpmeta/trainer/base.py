@@ -1,23 +1,18 @@
 import logging
 import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import optuna
 import pandas as pd
 from optuna import Study, Trial
-from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from rpmeta.config import Config
-from rpmeta.constants import CATEGORICAL_FEATURES, NUMERICAL_FEATURES
-from rpmeta.helpers import save_joblib
-from rpmeta.train.transformers import TransformedTargetRegressor
+from rpmeta.model import Model
+from rpmeta.store import ModelStorage
 
 logger = logging.getLogger(__name__)
 
@@ -41,48 +36,17 @@ class BestModelResult:
     params: dict[str, Any]
 
 
-class Model(ABC):
-    def __init__(self, name: str, config: Config, use_preprocessor: bool = True) -> None:
-        self.name = name.lower()
+class ModelTrainer(Model):
+    def __init__(self, name: str, config: Config) -> None:
+        super().__init__(name, config)
 
-        self.config = config
-        self._use_preprocessor = use_preprocessor
+        self._model_storage = ModelStorage(
+            model_name=self.name,
+        )
 
-        self.preprocessor = None
-        if self._use_preprocessor:
-            logger.debug("Creating preprocessor...")
-            self.preprocessor = ColumnTransformer(
-                transformers=[
-                    ("num", StandardScaler(), NUMERICAL_FEATURES),
-                    ("cat", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL_FEATURES),
-                ],
-            )
-
-    def create_pipeline(self, params: dict[str, int | float | str]) -> Pipeline:
-        """Return a sklearn Pipeline (including preprocessing and regressor)
-
-        Args:
-            params (dict): Dictionary of parameters for the regressor
-
-        Returns:
-            Pipeline: Sklearn pipeline with preprocessor and regressor
-        """
-        reg = self._make_regressor(params)
-        ttr = TransformedTargetRegressor(regressor=reg, func=np.log1p, inverse_func=np.expm1)
-        if self._use_preprocessor:
-            return Pipeline(
-                [
-                    ("preprocessor", self.preprocessor),
-                    ("regressor", ttr),
-                ],
-            )
-
-        return ttr
-
-    @abstractmethod
-    def _make_regressor(self, params: dict[str, int | float | str]) -> Any:
-        """Instantiate the base regressor (without preprocessing)"""
-        ...
+        now = time.strftime("%Y-%m-%d_%H-%M-%S")
+        self._model_directory = self.config.result_dir / f"{self.name}_{now}"
+        self._model_directory.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     @abstractmethod
@@ -123,7 +87,7 @@ class Model(ABC):
 
         def objective(trial: Trial) -> float:
             params = self.param_space(trial)
-            pipeline = self.create_pipeline(params)
+            pipeline = self.create_regressor(params)
 
             start = time.time()
             pipeline.fit(X_train, y_train)
@@ -153,19 +117,21 @@ class Model(ABC):
             )
 
         # refit best
-        best_pipeline = self.create_pipeline(study.best_trial.params)
+        best_regressor = self.create_regressor(study.best_trial.params)
 
-        best_pipeline.fit(X_train, y_train)
-        y_pred = best_pipeline.predict(X_test)
+        best_regressor.fit(X_train, y_train)
+        y_pred = best_regressor.predict(X_test)
 
-        now = time.strftime("%Y-%m-%d_%H-%M-%S")
-        save_joblib(best_pipeline, self.config.result_dir, f"{self.name}_{now}")
+        self._model_storage.save_model(
+            best_regressor,
+            self._model_directory,
+        )
 
         best_result = BestModelResult(
             model_name=self.name,
             # TODO: rather use the path to the model in the results dir, this consumes
             # a lot of memory if the model is large
-            model=best_pipeline,
+            model=best_regressor,
             r2=r2_score(y_test, y_pred),
             neg_rmse=-root_mean_squared_error(y_test, y_pred),
             neg_mae=-mean_absolute_error(y_test, y_pred),
@@ -188,10 +154,10 @@ class Model(ABC):
         Returns:
             Path: Path to the saved model
         """
-        pipeline = self.create_pipeline(self.default_params)
+        regressor = self.create_regressor(self.default_params)
         logger.info("Fitting model %s with default parameters: %s", self.name, self.default_params)
-        pipeline.fit(X, y)
+        regressor.fit(X, y)
         logger.debug("Model fitting complete.")
 
-        now = time.strftime("%Y-%m-%d_%H-%M-%S")
-        return save_joblib(pipeline, self.config.result_dir, f"{self.name}_{now}")
+        self._model_storage.save_model(regressor, self._model_directory)
+        return self._model_directory

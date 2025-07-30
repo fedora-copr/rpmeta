@@ -16,7 +16,7 @@ import seaborn as sn
 from optuna import Study
 
 from rpmeta.config import Config
-from rpmeta.train.base import BestModelResult, TrialResult
+from rpmeta.trainer.base import BestModelResult, TrialResult
 
 logger = logging.getLogger(__name__)
 

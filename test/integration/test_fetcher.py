@@ -2,11 +2,11 @@ from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from rpmeta.fetcher import CoprFetcher, KojiFetcher
+from rpmeta.fetcher.fetcher import CoprFetcher, KojiFetcher
 
 
-@patch("rpmeta.fetcher.koji.ClientSession")
-@patch("rpmeta.fetcher._get_distro_aliases_retry")
+@patch("rpmeta.fetcher.fetcher.koji.ClientSession")
+@patch("rpmeta.fetcher.fetcher._get_distro_aliases_retry")
 def test_koji_fetcher_fetch_data(
     mock_get_distro_aliases,
     mock_client_session,
@@ -46,9 +46,9 @@ def test_koji_fetcher_fetch_data(
     assert result[0] == dataset_record
 
 
-@patch("rpmeta.fetcher.Client")
-@patch("rpmeta.fetcher.next_page", return_value=None)
-@patch("rpmeta.fetcher.requests.get")
+@patch("rpmeta.fetcher.fetcher.Client")
+@patch("rpmeta.fetcher.fetcher.next_page", return_value=None)
+@patch("rpmeta.fetcher.fetcher.requests.get")
 def test_copr_fetcher_fetch_data(
     mock_requests_get,
     mock_next_page,
