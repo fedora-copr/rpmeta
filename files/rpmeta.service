@@ -1,0 +1,25 @@
+[Unit]
+Description=RPMeta prediction server
+Documentation=https://github.com/fedora-copr/rpmeta/wiki
+After=network.target
+
+[Service]
+Type=simple
+User=rpmeta
+Group=rpmeta
+ExecStart=/usr/bin/rpmeta model --model-dir=/usr/share/rpmeta/models --model-name=xgboost --categories=/usr/share/rpmeta/models/categories.json --config=/etc/rpmeta/config.toml serve
+
+# Security hardening
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

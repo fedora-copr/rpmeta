@@ -10,7 +10,9 @@ fetching data, and serving a REST API endpoint.
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Systemd Service](https://github.com/fedora-copr/rpmeta/wiki/RPMeta-Service-Documentation)
 - [Contributing](#contributing)
+- [Wiki](https://github.com/fedora-copr/rpmeta/wiki)
 
 ---
 
