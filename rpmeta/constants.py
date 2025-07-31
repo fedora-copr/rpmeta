@@ -54,3 +54,15 @@ class ModelEnum(StrEnum):
     @classmethod
     def get_all_model_names(cls) -> list[str]:
         return [model.value for model in cls]
+
+
+class TimeFormat(StrEnum):
+    """Valid time formats for prediction output"""
+
+    SECONDS = "seconds"
+    MINUTES = "minutes"
+    HOURS = "hours"
+
+    @classmethod
+    def get_all_formats(cls) -> list[str]:
+        return [fmt.value for fmt in cls]

@@ -89,14 +89,15 @@ class ModelTrainingManager:
         # rest of the preprocessing is done in the dataset.py
         logger.info("Preprocessing dataset")
         self.df["version"] = self.df["version"].str.replace(r"[\^~].*", "", regex=True)
-        self.df[TARGET] = np.round(self.df[TARGET]).astype(int)
+        self.df[TARGET] = self.df[TARGET].astype(int)  # this has to be in minutes
+
         self.df["ram"] = np.round(
             self.df["ram"] / DIVIDER,
         ).astype(int)
         self.df["swap"] = np.round(
             self.df["swap"] / DIVIDER,
         ).astype(int)
-        self.df = self.df[(self.df[TARGET] >= 15) & (self.df[TARGET] <= 115000)]
+        self.df = self.df[(self.df[TARGET] >= 0) & (self.df[TARGET] <= 1917)]
 
         logger.info("Removing duplicates and NaN values")
         self.df = self.df.drop_duplicates(keep=False)

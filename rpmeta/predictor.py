@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from rpmeta.config import Config
-from rpmeta.constants import DIVIDER, ModelEnum
+from rpmeta.constants import DIVIDER, ModelEnum, TimeFormat
 from rpmeta.dataset import InputRecord
 from rpmeta.helpers import save_joblib
 from rpmeta.regressor import TransformedTargetRegressor
@@ -75,7 +75,7 @@ class Predictor:
             input_data: The input data to make prediction on
 
         Returns:
-            The prediction time in seconds
+            The prediction time in minutes by default
         """
         if input_data.package_name not in self.category_maps["package_name"]:
             logger.error(
@@ -86,7 +86,19 @@ class Predictor:
 
         df = self._preprocess(input_data)
         pred = self.model.predict(df)
-        return int(pred[0].item())
+        minutes = int(pred[0].item())
+
+        if self.config.model.behavior.time_format == TimeFormat.SECONDS:
+            return minutes * 60
+        if self.config.model.behavior.time_format == TimeFormat.MINUTES:
+            return minutes
+        if self.config.model.behavior.time_format == TimeFormat.HOURS:
+            return minutes // 60
+        logger.error(
+            f"Unknown time format {self.config.model.behavior.time_format}. "
+            "Returning minutes as default.",
+        )
+        return minutes
 
     def save(
         self,

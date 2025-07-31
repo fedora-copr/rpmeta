@@ -1,4 +1,5 @@
 import logging
+import math
 from pathlib import Path
 
 import joblib
@@ -32,3 +33,16 @@ def save_joblib(obj: object, result_dir: Path, filename: str) -> Path:
     joblib.dump(obj, path)
     logger.info("Saved %s to %s", obj.__class__.__name__, path)
     return path
+
+
+def to_minutes_rounded(seconds: int) -> int:
+    """
+    Convert seconds to minutes, rounding up.
+
+    Args:
+        seconds: The time in seconds
+
+    Returns:
+        The time in minutes, rounded up
+    """
+    return math.ceil(seconds / 60)

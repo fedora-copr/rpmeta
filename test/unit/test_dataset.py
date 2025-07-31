@@ -84,5 +84,5 @@ def test_record_to_data_frame():
         "cpu_cores": 8,
         "ram": 16384,
         "swap": 8192,
-        "build_duration": 120,
+        "build_duration": 2,  # must be in minutes
     }

@@ -9,6 +9,7 @@ from rpmeta.constants import (
     CONFIG_LOCATIONS,
     KOJI_HUB_URL,
     RESULT_DIR_LOCATIONS,
+    TimeFormat,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,16 @@ class LightGBMParams(ModelParams):
     )
 
 
+class ModelBehavior(BaseModel):
+    """Model behavior configuration"""
+
+    time_format: TimeFormat = Field(
+        default=TimeFormat.MINUTES,
+        description="Format for predicted time output",
+        examples=TimeFormat.get_all_formats(),
+    )
+
+
 class Model(BaseModel):
     """Machine learning model configuration"""
 
@@ -154,6 +165,10 @@ class Model(BaseModel):
     verbose: bool = Field(
         default=False,
         description="Enable verbose output during model training and evaluation",
+    )
+    behavior: ModelBehavior = Field(
+        default_factory=ModelBehavior,
+        description="Model behavior configuration",
     )
     xgboost: XGBoostParams = Field(
         default_factory=XGBoostParams,

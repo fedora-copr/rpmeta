@@ -1,9 +1,11 @@
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
 from rpmeta import __version__
+from rpmeta.config import ModelBehavior
 from rpmeta.dataset import InputRecord
 from rpmeta.predictor import Predictor
 
@@ -45,11 +47,11 @@ app = FastAPI(
     ### Example Response
     ```json
     {
-      "prediction": 283
+      "prediction": 5
     }
     ```
 
-    The prediction is the estimated build time in seconds.
+    The prediction is the estimated build time in minutes by default.
     """,
     version=__version__,
     docs_url="/docs",
@@ -65,24 +67,36 @@ class PredictionResponse(BaseModel):
     """
     Response model for the prediction endpoint.
 
-    This contains the predicted build duration in seconds.
+    This contains the predicted build duration in desired time format.
     """
 
     prediction: int = Field(
-        description="Predicted build duration in seconds",
+        description="Predicted build duration in desired time format",
         gt=0,
-        examples=[283, 1800, 7200],
+        examples=[5, 30, 120],
+    )
+    used_configuration: ModelBehavior = Field(
+        ...,
+        description="Configuration used for the prediction",
+    )
+
+
+class PredictionRequest(InputRecord):
+    """
+    Input body for the prediction endpoint.
+
+    This is used to pass the input data to the model for prediction with all
+    the necessary configurations.
+    """
+
+    configuration: Optional[ModelBehavior] = Field(
+        default=None,
+        description="Optional configuration for the server or model",
     )
 
 
 # API router for v1 endpoints
 v1_router = APIRouter(prefix="/v1")
-
-_responses_v1 = {
-    200: {"description": "Successful prediction"},
-    422: {"description": "Validation error - Invalid input data"},
-    500: {"description": "Server error - Model not initialized"},
-}
 
 
 @v1_router.post(
@@ -94,9 +108,8 @@ _responses_v1 = {
         "Predicts the build duration for an RPM package based on hardware information"
         " and package metadata."
     ),
-    responses=_responses_v1,
 )
-def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
+def predict_endpoint_v1(request_data: PredictionRequest) -> PredictionResponse:
     """
     Predict the build duration for an RPM package.
 
@@ -104,7 +117,7 @@ def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
     the predicted build duration in seconds.
     """
 
-    logger.debug("Received request for prediction: %s", input_record)
+    logger.debug("Received request for prediction: %s", request_data)
 
     if predictor is None:
         raise HTTPException(
@@ -112,9 +125,32 @@ def predict_endpoint_v1(input_record: InputRecord) -> PredictionResponse:
             detail="Model not initialized. Server not ready for predictions.",
         )
 
-    prediction = predictor.predict(input_record)
-    logger.debug("Prediction for %s: %s seconds", input_record.package_name, prediction)
-    return PredictionResponse(prediction=prediction)
+    # original model behavior before any changes
+    model_behavior_before = predictor.config.model.behavior
+
+    if request_data.configuration:
+        update_behavior = request_data.configuration.model_dump(
+            exclude_unset=True,
+            exclude_none=True,
+        )
+        predictor.config.model.behavior = model_behavior_before.model_copy(update=update_behavior)
+
+    package_data = InputRecord.model_validate(request_data)
+    prediction = predictor.predict(package_data)
+    logger.debug(
+        "Prediction for %s: %s %s",
+        package_data.package_name,
+        prediction,
+        predictor.config.model.behavior.time_format,
+    )
+    resp = PredictionResponse(
+        prediction=prediction,
+        used_configuration=predictor.config.model.behavior,
+    )
+
+    # restore the original behavior after prediction
+    predictor.config.model.behavior = model_behavior_before
+    return resp
 
 
 app.include_router(v1_router)
@@ -130,16 +166,15 @@ app.include_router(v1_router)
         "Alias to the latest API version (currently v1). Predicts the build duration for "
         "an RPM package based on hardware information and package metadata."
     ),
-    responses=_responses_v1,
 )
-def predict_endpoint(input_record: InputRecord) -> PredictionResponse:
+def predict_endpoint(request_data: PredictionRequest) -> PredictionResponse:
     """
     Alias to the latest API version (currently v1).
 
     This is a convenience endpoint that forwards requests to the current stable API version.
     For new implementations, consider using the versioned endpoint directly.
     """
-    return predict_endpoint_v1(input_record)
+    return predict_endpoint_v1(request_data)
 
 
 def reload_predictor(new_predictor: Predictor) -> None:

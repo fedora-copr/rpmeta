@@ -4,6 +4,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from rpmeta.constants import ALL_FEATURES
+from rpmeta.helpers import to_minutes_rounded
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +78,6 @@ class HwInfo(BaseModel):
             return "unknown"
 
         return v
-
-    def to_dict(self) -> dict[str, int | str]:
-        """
-        Convert the hardware information to dictionary with only interesting fields for the models.
-        """
-        return self.model_dump()
 
 
 class InputRecord(BaseModel):
@@ -185,7 +180,7 @@ class InputRecord(BaseModel):
             "os_family": self.os_family,
             "os_version": self.os_version,
             "os_arch": self.os_arch,
-            **self.hw_info.to_dict(),
+            **self.hw_info.model_dump(),
         }
         # ensuring that all features are in expected order for the model
         return {k: result[k] for k in ALL_FEATURES}
@@ -202,7 +197,7 @@ class Record(InputRecord):
     build_duration: int = Field(
         description="Actual build duration in seconds",
         gt=0,
-        examples=[180, 3600, 7200],
+        examples=[5, 60, 720],
     )
 
     def to_data_frame(self) -> dict[str, Any]:
@@ -212,5 +207,5 @@ class Record(InputRecord):
         """
         return {
             **super().to_data_frame(),
-            "build_duration": self.build_duration,
+            "build_duration": to_minutes_rounded(self.build_duration),
         }

@@ -46,8 +46,8 @@ def model(ctx: click.Context, model_dir: Path, model_name: ModelEnum, categories
     possible values.
 
     The response of the model is a single integer representing the predicted build time duration
-    in seconds. If the model does not recognize the package, it will return -1 as a prediction
-    and log an error message.
+    in minutes by default. If the model does not recognize the package, it will return -1 as
+    a prediction and log an error message.
     """
     ctx.ensure_object(Context)
     ctx.obj.predictor = Predictor.load(model_dir, model_name, categories, ctx.obj.config)
@@ -90,10 +90,10 @@ def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: b
             }
         }
 
-    The server will return a JSON response with the predicted build time duration in seconds in
-    format:
+    The server will return a JSON response with the predicted build time duration in minutes
+    (by default) in the following format:
         {
-            "prediction": 1234
+            "prediction": 21
         }
     or -1 as the prediction if the package name is not recognized.
     """
@@ -164,7 +164,7 @@ def predict(ctx: click.Context, data: str, output_type: str):
             }
         }
 
-    Command response is in seconds.
+    Command response is in minutes by default.
     """
     if Path(data).exists():
         with open(data) as f:
