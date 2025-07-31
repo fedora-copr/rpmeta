@@ -100,7 +100,7 @@ def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: b
     from uvicorn.config import Config as UvicornConfig
     from uvicorn.server import Server
 
-    from rpmeta.server import app, reload_predictor
+    from rpmeta.server.api import app, reload_predictor
 
     reload_predictor(ctx.obj.predictor)
 

@@ -28,6 +28,7 @@ BuildRequires:  systemd-rpm-macros
 
 %package -n     server
 Summary:        RPMeta server module for serving REST API endpoint
+Requires:       %{name} = %{version}-%{release}
 %systemd_requires
 
 %description -n server
@@ -40,6 +41,7 @@ predictions. It includes a systemd service for running the RPMeta server as a ba
 # xgboost nor any other boosting algorithm is packaged to fedora
 %package -n     trainer
 Summary:        RPMeta trainer module for predictive model training
+Requires:       %{name} = %{version}-%{release}
 
 %description -n trainer
 This package provides the training module of RPMeta, including data processing, data fetchin from
@@ -50,6 +52,7 @@ Copr and Koji build systems, and model training.
 
 %package -n     fetcher
 Summary:        RPMeta fetcher module for data fetching
+Requires:       %{name} = %{version}-%{release}
 
 %description -n fetcher
 This package provides the fetcher module of RPMeta, including data fetching from Copr and Koji.
@@ -77,7 +80,7 @@ sed -i '/kaleido==/d' pyproject.toml
 
 %install
 %pyproject_install
-%pyproject_save_files %{name} "" server fetcher trainer
+%pyproject_save_files %{name}
 
 install -D -m 644 -p files/config.toml.example %{buildroot}%{_sysconfdir}/%{name}/config.toml.example
 install -D -m 644 -p files/rpmeta.service %{buildroot}%{_unitdir}/rpmeta.service
@@ -112,17 +115,20 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildro
 %config(noreplace) %{_sysconfdir}/%{name}/config.toml.example
 
 
-%files -n server -f %{pyproject_files_server}
+%files -n server
+%{python3_sitelib}/rpmeta/server/
 %{_unitdir}/rpmeta.service
 %{_sysusersdir}/%{name}.conf
 %{_tmpfilesdir}/%{name}.conf
 %{_presetdir}/95-%{name}.preset
 
 
-%files -n trainer -f %{pyproject_files_trainer}
+%files -n trainer
+%{python3_sitelib}/rpmeta/trainer/
 
 
-%files -n fetcher -f %{pyproject_files_fetcher}
+%files -n fetcher
+%{python3_sitelib}/rpmeta/fetcher/
 
 
 %changelog
