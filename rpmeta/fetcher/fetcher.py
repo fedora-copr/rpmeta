@@ -56,6 +56,11 @@ class Fetcher(ABC):
 
         self.limit = limit
 
+        # keep it here so it fails right away if bodhi API is not available at the moment
+        self._fedora_rawhide_number = max(
+            int(alias.version_number) for alias in _get_distro_aliases_retry()["fedora-all"]
+        )
+
     @abstractmethod
     def fetch_data(self) -> list[Record]:
         """
@@ -82,10 +87,6 @@ class KojiFetcher(Fetcher):
 
         self._host_hw_info_map: dict[int, HwInfo] = {}
         self._current_page = 0
-        # keep it here so it fails right away if bodhi API is not available at the moment
-        self._fedora_rawhide_number = max(
-            int(alias.version_number) for alias in _get_distro_aliases_retry()["fedora-all"]
-        )
 
     def _fetch_hw_info_from_koji(self, task_info: dict) -> Optional[HwInfo]:
         task_id = task_info["id"]
@@ -120,9 +121,6 @@ class KojiFetcher(Fetcher):
         regex_fc = re.search(r"\.fc(\d{2})", release)
         if regex_fc:
             fedora_version = regex_fc.group(1)
-            if int(fedora_version) == self._fedora_rawhide_number:
-                fedora_version = "rawhide"
-
             match = f"fedora-{fedora_version}"
 
         # searches for strings like "X.elnX"
@@ -275,10 +273,17 @@ class CoprFetcher(Fetcher):
                 )
                 continue
 
+            parsed_mock_chroot = build_chroot.mock_chroot.name
+            if parsed_mock_chroot and parsed_mock_chroot.startswith("fedora-rawhide"):
+                parsed_mock_chroot = parsed_mock_chroot.replace(
+                    "rawhide",
+                    str(self._fedora_rawhide_number),
+                )
+
             record = CoprFetcher._parse_build_chroot(
                 pkg_name=build_chroot.build.package.name,
                 pkg_version=build_chroot.build.pkg_version,
-                mock_chroot=build_chroot.mock_chroot.name,
+                mock_chroot=parsed_mock_chroot,
                 result_dir_url=build_chroot.result_dir_url,
                 build_duration=int(build_chroot.ended_on - build_chroot.started_on),
             )
