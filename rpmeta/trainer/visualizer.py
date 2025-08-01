@@ -57,7 +57,7 @@ class ResultsHandler:
     def _save_figure(self, fig: plt.Figure, name: str) -> None:
         path = self._plot_dir / f"{name}.png"
         fig.savefig(path, dpi=300, bbox_inches="tight")
-        plt.close(fig)
+        plt.close()
         logger.info("Saved figure %s.png to %s", name, self._plot_dir)
 
     def _format_parameter(self, value: Any) -> Any:
