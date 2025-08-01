@@ -14,7 +14,7 @@ from rpmeta.predictor import Predictor
 logger = logging.getLogger(__name__)
 
 
-@click.group("model")
+@click.group("run")
 @click.option(
     "-m",
     "--model-dir",
@@ -37,13 +37,13 @@ logger = logging.getLogger(__name__)
     help="Path to the categories file",
 )
 @click.pass_context
-def model(ctx: click.Context, model_dir: Path, model_name: ModelEnum, categories: Path):
+def run(ctx: click.Context, model_dir: Path, model_name: ModelEnum, categories: Path):
     """
-    Subcommand to collect model-related commands.
+    Subcommand to collect model-related commands and run operations on them.
 
-    The model is expected to be a joblib file, and the categories are expected to be in JSON
-    format. The categories file should contain a mapping of categorical features to their
-    possible values.
+    The model dir is expected to be a directory with model files, and the categories are
+    expected to be in JSON format. The categories file should contain a mapping of categorical
+    features to their possible values.
 
     The response of the model is a single integer representing the predicted build time duration
     in minutes by default. If the model does not recognize the package, it will return -1 as
@@ -53,7 +53,7 @@ def model(ctx: click.Context, model_dir: Path, model_name: ModelEnum, categories
     ctx.obj.predictor = Predictor.load(model_dir, model_name, categories, ctx.obj.config)
 
 
-@model.command("serve")
+@run.command("serve")
 @click.option("--host", type=str, default=None, help="Host to serve the API on")
 @click.option(
     "-p",
@@ -93,7 +93,8 @@ def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: b
     The server will return a JSON response with the predicted build time duration in minutes
     (by default) in the following format:
         {
-            "prediction": 21
+            "prediction": 21,
+            ...
         }
     or -1 as the prediction if the package name is not recognized.
     """
@@ -125,7 +126,7 @@ def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: b
     server.run()
 
 
-@model.command("predict")
+@run.command("predict")
 @click.option(
     "-d",
     "--data",

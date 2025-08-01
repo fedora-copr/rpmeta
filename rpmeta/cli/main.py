@@ -6,7 +6,7 @@ from typing import Any, Optional
 import click
 
 from rpmeta.cli.ctx import Context
-from rpmeta.cli.model import model
+from rpmeta.cli.run import run
 from rpmeta.config import ConfigManager
 
 
@@ -94,7 +94,7 @@ def _register_optional_command(import_path: str, command_name: str) -> None:
 
 
 # base commands
-entry_point.add_command(model)
+entry_point.add_command(run)
 
 # optional commands
 _register_optional_command("rpmeta.cli.fetcher", "fetch_data")

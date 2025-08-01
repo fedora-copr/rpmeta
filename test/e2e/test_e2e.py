@@ -19,7 +19,7 @@ def test_predict(model_and_types):
     trained_model_file, cat_dtypes_file, model_name = model_and_types
     dataset_path = Path(__file__).parent.parent / "data" / "dataset_predict.json"
     cmd = [
-        "model",
+        "run",
         "--model-dir",
         str(trained_model_file),
         "--model-name",

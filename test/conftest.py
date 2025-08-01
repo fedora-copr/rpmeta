@@ -51,7 +51,7 @@ def api_server(model_and_types):
             "python3",
             "-m",
             "rpmeta.cli.main",
-            "model",
+            "run",
             "--model-dir",
             str(trained_model_dir),
             "--model-name",
