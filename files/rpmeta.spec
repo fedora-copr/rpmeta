@@ -84,6 +84,7 @@ sed -i '/kaleido==/d' pyproject.toml
 
 install -D -m 644 -p files/config.toml.example %{buildroot}%{_sysconfdir}/%{name}/config.toml.example
 install -D -m 644 -p files/rpmeta.service %{buildroot}%{_unitdir}/rpmeta.service
+install -D -m 644 -p files/rpmeta.env %{buildroot}%{_sysconfdir}/sysconfig/rpmeta
 
 install -D -m 644 %{S:1} %{buildroot}%{_presetdir}/95-%{name}.preset
 
@@ -121,6 +122,7 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildro
 %{_sysusersdir}/%{name}.conf
 %{_tmpfilesdir}/%{name}.conf
 %{_presetdir}/95-%{name}.preset
+%config(noreplace) %{_sysconfdir}/sysconfig/rpmeta
 
 
 %files -n trainer

@@ -1,2 +1,3 @@
 # One firstly needs to get or train the model and categories for the server
+# Configure service parameters in /etc/sysconfig/rpmeta before enabling
 disable rpmeta.service
