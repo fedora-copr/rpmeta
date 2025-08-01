@@ -7,7 +7,13 @@ calling the underlying regressor methods directly.
 """
 
 import logging
+import os
+import atexit
+import tempfile
+
 from typing import Any, Callable
+
+import joblib
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +32,8 @@ class TransformedTargetRegressor:
         self.func = func
         self.inverse_func = inverse_func
         self._fitted = False
+        self._mmap_file = None
+        atexit.register(self._cleanup_mmap_file)
 
     def fit(self, X: Any, y: Any, **fit_params) -> "TransformedTargetRegressor":  # noqa: N803
         y_transformed = self.func(y)
@@ -39,6 +47,32 @@ class TransformedTargetRegressor:
 
         predictions = self.regressor.predict(X)
         return self.inverse_func(predictions)
+    
+    def _cleanup_mmap_file(self) -> None:
+        if not self._mmap_file or not os.path.exists(self._mmap_file):
+            return
+        
+        try:
+            logger.debug("Cleaning up memory-mapped file: %s", self._mmap_file)
+            os.remove(self._mmap_file)
+        except OSError as e:
+            logger.error("Error cleaning up memory-mapped file: %s", e)
+
+    def memory_mapped_regressor(self) -> None:
+        """
+        Creates a memory-mapped version of the regressor to save memory.
+        If really the regressor is large enough to allocate this on disk, expect significant
+        performance degradation.
+        """
+        self._cleanup_mmap_file()
+
+        logger.debug("Creating a temporary file for memory-mapped regressor")
+        with tempfile.NamedTemporaryFile(suffix=".joblib", delete=False) as tmp_file:
+            self._mmap_file = tmp_file.name
+
+        logger.debug("Creating memory-mapped version of the regressor at %s", self._mmap_file)
+        joblib.dump(self.regressor, self._mmap_file)
+        self.regressor = joblib.load(self._mmap_file, mmap_mode='r')
 
     def __getattr__(self, name: str) -> Any:
         # Only forward to regressor for non-special attributes to avoid recursion

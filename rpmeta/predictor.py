@@ -47,6 +47,18 @@ class Predictor:
         model_storage = ModelStorage(model_name)
         model = model_storage.get_model(model_path)
 
+        logger.info("Model loaded successfully, now loading category maps")
+
+        if config.model.mmapped:
+            logger.info(f"Model is at {model}")
+            logger.info(f"Model regressor is at {model.regressor}")
+            logger.info("Using memory-mapped model to save memory")
+            model.memory_mapped_regressor()
+            logger.info("Memory-mapped model created successfully")
+            logger.info(f"Model is now at {model}")
+            logger.info(f"Model regressor is now at {model.regressor}")
+
+
         logger.info("Loading category maps from %s", category_maps_path)
         with open(category_maps_path) as f:
             category_maps = json.load(f)
