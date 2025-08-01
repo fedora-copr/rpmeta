@@ -100,5 +100,5 @@ def fetch_data(
     )
     with open(path, "w") as f:
         logger.info("Saving data to: %s", path)
-        json.dump(fetched_data, f, indent=4, default=Record.to_data_frame)
+        json.dump(fetched_data, f, indent=4, default=Record.to_model_dict)
         logger.info("Data saved to: %s", path)

@@ -30,43 +30,21 @@ def test_predictor_load(mock_file, mock_load, mock_get_model, example_config):
     assert predictor.category_maps == {"package_name": ["pkg1", "pkg2"], "feature": ["a", "b"]}
 
 
-def test_preprocess_applies_category_and_round(example_config):
-    category_maps = {"feature": ["a", "b"], "package_name": ["pkg1", "pkg2"]}
-    mock_input = MagicMock()
-    mock_input.to_data_frame.return_value = {
-        "feature": "a",
-        "package_name": "pkg1",
-        "ram": 123456,
-        "swap": 567890,
-    }
-    predictor = Predictor(MagicMock(), category_maps, example_config)
-    df = predictor._preprocess(mock_input)
-    assert isinstance(df, pd.DataFrame)
-
-    # because of the DIVIDER constant
-    assert df.loc[0, "ram"] == 1
-    assert df.loc[0, "swap"] == 6
-
-    assert df.loc[0, "feature"] == "a"
-    assert df.loc[0, "package_name"] == "pkg1"
-    assert isinstance(df["feature"].dtype, pd.CategoricalDtype)
-    assert isinstance(df["package_name"].dtype, pd.CategoricalDtype)
-
-
 def test_predict_returns_prediction(example_config):
     category_maps = {"package_name": ["pkg1"], "feature": ["a"]}
     mock_input = MagicMock()
     mock_input.package_name = "pkg1"
-    mock_input.to_data_frame.return_value = {
+    df_dict = {
         "feature": "a",
         "package_name": "pkg1",
         "ram": 1000,
         "swap": 2000,
     }
+    mock_input.to_data_frame.return_value = pd.DataFrame([df_dict])
     mock_model = MagicMock()
     mock_model.predict.return_value = np.array([42])
     predictor = Predictor(mock_model, category_maps, example_config)
-    result = predictor.predict(mock_input)
+    result = predictor.predict(mock_input, example_config.model.behavior)
     assert result == 42
     mock_model.predict.assert_called_once()
 
@@ -77,7 +55,7 @@ def test_predict_unknown_package_name_logs_and_returns_minus_one(caplog, example
     mock_input.package_name = "unknown"
     predictor = Predictor(MagicMock(), category_maps, example_config)
     with caplog.at_level("ERROR"):
-        result = predictor.predict(mock_input)
+        result = predictor.predict(mock_input, example_config.model.behavior)
 
     assert result == -1
     assert "is not known" in caplog.text

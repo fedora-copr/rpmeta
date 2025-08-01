@@ -174,7 +174,7 @@ def predict(ctx: click.Context, data: str, output_type: str):
 
     logger.debug("Input data received: %s", input_data)
 
-    prediction = ctx.obj.predictor.predict(InputRecord(**input_data))
+    prediction = ctx.obj.predictor.predict(InputRecord(**input_data), ctx.obj.config.model.behavior)
 
     if output_type == "json":
         print(json.dumps({"prediction": prediction}))

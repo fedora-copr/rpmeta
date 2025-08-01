@@ -20,11 +20,11 @@ CATEGORICAL_FEATURES = [
     "os_family",
     "os_version",
     "os_arch",
-    "cpu_model_name",
-    "cpu_arch",
-    "cpu_model",
+    "hw_info.cpu_model_name",
+    "hw_info.cpu_arch",
+    "hw_info.cpu_model",
 ]
-NUMERICAL_FEATURES = ["epoch", "cpu_cores", "ram", "swap"]
+NUMERICAL_FEATURES = ["epoch", "hw_info.cpu_cores", "hw_info.ram", "hw_info.swap"]
 ALL_FEATURES = CATEGORICAL_FEATURES + NUMERICAL_FEATURES
 TARGET = "build_duration"
 

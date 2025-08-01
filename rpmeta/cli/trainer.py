@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -58,8 +59,11 @@ def train(
     if result_dir:
         config.result_dir = result_dir
 
+    with open(dataset, encoding="utf-8") as f:
+        data = json.load(f)
+
     trainer = ModelTrainingManager(
-        data=pd.read_json(dataset),
+        data=pd.json_normalize(data),
         model_allowlist=model_allowlist,
         config=config,
     )

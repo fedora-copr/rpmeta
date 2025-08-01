@@ -9,7 +9,7 @@ import pytest
 
 from rpmeta.config import Config
 from rpmeta.constants import ModelEnum
-from rpmeta.dataset import HwInfo, Record
+from rpmeta.dataset import HwInfo, InputRecord, Record
 from rpmeta.trainer.base import Model
 from test.helpers import run_rpmeta_cli
 
@@ -90,8 +90,19 @@ def hw_info():
         cpu_cores=4,
         cpu_model="12",
         cpu_model_name="silny procak",
-        ram=16,
-        swap=8,
+        ram=16000000,
+        swap=8000000,
+    )
+
+
+@pytest.fixture
+def input_record(hw_info):
+    return InputRecord(
+        package_name="test-package",
+        epoch=0,
+        version="1.0.0",
+        mock_chroot="fedora-35-x86_64",
+        hw_info=hw_info,
     )
 
 

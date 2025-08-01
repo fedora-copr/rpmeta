@@ -1,9 +1,11 @@
 import logging
 from typing import Any, Optional
 
+import numpy as np
+import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from rpmeta.constants import ALL_FEATURES
+from rpmeta.constants import ALL_FEATURES, DIVIDER
 from rpmeta.helpers import to_minutes_rounded
 
 logger = logging.getLogger(__name__)
@@ -128,10 +130,6 @@ class InputRecord(BaseModel):
         examples=["fedora-41-x86_64", "centos-stream-9-x86_64"],
     )
 
-    model_config = ConfigDict(
-        validate_assignment=True,
-    )
-
     @property
     def neva(self) -> str:
         """
@@ -167,12 +165,11 @@ class InputRecord(BaseModel):
 
         return self.mock_chroot.rsplit("-", 2)[2]
 
-    def to_data_frame(self) -> dict[str, Any]:
+    def to_model_dict(self) -> dict[str, Any]:
         """
-        Convert the record to dictionary that the _trained model_ understands.
+        Convert the record to dictionary with data that the _trained model_ expects.
         """
-        # TODO: this could be avoided by pandas json_normalize
-        result = {
+        return {
             "package_name": self.package_name,
             "epoch": self.epoch,
             "version": self.version,
@@ -180,10 +177,30 @@ class InputRecord(BaseModel):
             "os_family": self.os_family,
             "os_version": self.os_version,
             "os_arch": self.os_arch,
-            **self.hw_info.model_dump(),
+            "hw_info": self.hw_info.model_dump(),
         }
-        # ensuring that all features are in expected order for the model
-        return {k: result[k] for k in ALL_FEATURES}
+
+    def to_data_frame(self, category_maps: dict[str, list[str]]) -> pd.DataFrame:
+        """
+        Convert the record to a pandas DataFrame that the model understands.
+        This is used for prediction.
+        """
+        df = pd.json_normalize(self.model_dump())
+        df["os"] = self.os
+        df["os_family"] = self.os_family
+        df["os_version"] = self.os_version
+        df["os_arch"] = self.os_arch
+
+        # preprocess
+        for col, cat_list in category_maps.items():
+            dtype = pd.CategoricalDtype(categories=cat_list, ordered=False)
+            df[col] = df[col].astype(dtype)
+
+        df["hw_info.ram"] = np.round(df["hw_info.ram"] / DIVIDER).astype(int)
+        df["hw_info.swap"] = np.round(df["hw_info.swap"] / DIVIDER).astype(int)
+
+        # ensure all features are in the expected order for the model
+        return df[ALL_FEATURES]
 
 
 class Record(InputRecord):
@@ -200,12 +217,13 @@ class Record(InputRecord):
         examples=[5, 60, 720],
     )
 
-    def to_data_frame(self) -> dict[str, Any]:
+    def to_model_dict(self) -> dict[str, Any]:
         """
         Convert the record to dictionary that the model _to be trained_ understands + has the
          target feature.
         """
         return {
-            **super().to_data_frame(),
+            **super().to_model_dict(),
+            # the fetched data is in seconds, but the model gives better results in minutes
             "build_duration": to_minutes_rounded(self.build_duration),
         }

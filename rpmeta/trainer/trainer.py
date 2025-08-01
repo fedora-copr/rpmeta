@@ -24,7 +24,7 @@ class ModelTrainingManager:
         config: Config,
         model_allowlist: Optional[set[ModelEnum]] = None,
     ) -> None:
-        self.df = data.copy()
+        self.df = data
         self.config = config
 
         self._preprocess_dataset()
@@ -91,11 +91,11 @@ class ModelTrainingManager:
         self.df["version"] = self.df["version"].str.replace(r"[\^~].*", "", regex=True)
         self.df[TARGET] = self.df[TARGET].astype(int)  # this has to be in minutes
 
-        self.df["ram"] = np.round(
-            self.df["ram"] / DIVIDER,
+        self.df["hw_info.ram"] = np.round(
+            self.df["hw_info.ram"] / DIVIDER,
         ).astype(int)
-        self.df["swap"] = np.round(
-            self.df["swap"] / DIVIDER,
+        self.df["hw_info.swap"] = np.round(
+            self.df["hw_info.swap"] / DIVIDER,
         ).astype(int)
         self.df = self.df[(self.df[TARGET] >= 0) & (self.df[TARGET] <= 1917)]
 

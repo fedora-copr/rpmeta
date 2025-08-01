@@ -125,32 +125,24 @@ def predict_endpoint_v1(request_data: PredictionRequest) -> PredictionResponse:
             detail="Model not initialized. Server not ready for predictions.",
         )
 
-    # original model behavior before any changes
-    model_behavior_before = predictor.config.model.behavior
-
     if request_data.configuration:
-        update_behavior = request_data.configuration.model_dump(
-            exclude_unset=True,
-            exclude_none=True,
-        )
-        predictor.config.model.behavior = model_behavior_before.model_copy(update=update_behavior)
+        model_behavior = request_data.configuration
+    else:
+        # Use the default model behavior from the server config
+        model_behavior = predictor.config.model.behavior
 
     package_data = InputRecord.model_validate(request_data)
-    prediction = predictor.predict(package_data)
+    prediction = predictor.predict(package_data, model_behavior)
     logger.debug(
         "Prediction for %s: %s %s",
         package_data.package_name,
         prediction,
-        predictor.config.model.behavior.time_format,
+        model_behavior.time_format,
     )
-    resp = PredictionResponse(
+    return PredictionResponse(
         prediction=prediction,
-        used_configuration=predictor.config.model.behavior,
+        used_configuration=model_behavior,
     )
-
-    # restore the original behavior after prediction
-    predictor.config.model.behavior = model_behavior_before
-    return resp
 
 
 app.include_router(v1_router)

@@ -2,11 +2,8 @@ import json
 import logging
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-
-from rpmeta.config import Config
-from rpmeta.constants import DIVIDER, ModelEnum, TimeFormat
+from rpmeta.config import Config, ModelBehavior
+from rpmeta.constants import ModelEnum, TimeFormat
 from rpmeta.dataset import InputRecord
 from rpmeta.helpers import save_joblib
 from rpmeta.regressor import TransformedTargetRegressor
@@ -56,23 +53,13 @@ class Predictor:
 
         return cls(model, category_maps, config)
 
-    def _preprocess(self, input_data: InputRecord) -> pd.DataFrame:
-        df = pd.DataFrame([input_data.to_data_frame()])
-
-        for col, cat_list in self.category_maps.items():
-            dtype = pd.CategoricalDtype(categories=cat_list, ordered=False)
-            df[col] = df[col].astype(dtype)
-
-        df["ram"] = np.round(df["ram"] / DIVIDER).astype(int)
-        df["swap"] = np.round(df["swap"] / DIVIDER).astype(int)
-        return df
-
-    def predict(self, input_data: InputRecord) -> int:
+    def predict(self, input_data: InputRecord, behavior: ModelBehavior) -> int:
         """
         Make prediction on the input data using the model and category maps.
 
         Args:
             input_data: The input data to make prediction on
+            behavior: The model behavior configuration
 
         Returns:
             The prediction time in minutes by default
@@ -84,19 +71,19 @@ class Predictor:
             )
             return -1
 
-        df = self._preprocess(input_data)
+        df = input_data.to_data_frame(self.category_maps)
         pred = self.model.predict(df)
         minutes = int(pred[0].item())
 
-        if self.config.model.behavior.time_format == TimeFormat.SECONDS:
+        if behavior.time_format == TimeFormat.SECONDS:
             return minutes * 60
-        if self.config.model.behavior.time_format == TimeFormat.MINUTES:
+        if behavior.time_format == TimeFormat.MINUTES:
             return minutes
-        if self.config.model.behavior.time_format == TimeFormat.HOURS:
+        if behavior.time_format == TimeFormat.HOURS:
             return minutes // 60
+
         logger.error(
-            f"Unknown time format {self.config.model.behavior.time_format}. "
-            "Returning minutes as default.",
+            f"Unknown time format {behavior.time_format}. Returning minutes as default.",
         )
         return minutes
 
