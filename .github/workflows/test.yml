@@ -18,4 +18,4 @@ jobs:
           sudo apt -y install just podman
       - name: Run tests inside fedora container
         run: |
-          just --set ci true test-everything-in-container
+          just --set ci true test-all
