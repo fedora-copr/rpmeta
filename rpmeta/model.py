@@ -4,11 +4,13 @@ from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Optional
 
+import joblib
 import numpy as np
+from sklearn.compose import TransformedTargetRegressor
 
 from rpmeta.config import Config
-from rpmeta.constants import ModelEnum
-from rpmeta.regressor import TransformedTargetRegressor
+from rpmeta.constants import ModelEnum, ModelStorageBaseNames
+from rpmeta.helpers import save_joblib
 
 if TYPE_CHECKING:
     from lightgbm import LGBMRegressor
@@ -23,7 +25,10 @@ class Model(ABC):
         self.name = name.lower()
         self.config = config
 
-    def create_regressor(self, params: dict[str, int | float | str]) -> TransformedTargetRegressor:
+    def create_regressor(
+        self,
+        params: dict[str, int | float | str],
+    ) -> TransformedTargetRegressor:
         """
         Return a regressor with the given parameters.
 
@@ -68,6 +73,59 @@ class Model(ABC):
         """
         ...
 
+    def save_regressor(self, regressor: TransformedTargetRegressor, path: Path) -> None:
+        """
+        Save the whole regressor to the specified path, including model and transformer.
+
+        Args:
+            regressor: The TransformedTargetRegressor to save
+            path: The directory to save the regressor
+        """
+        if not path.is_dir():
+            raise ValueError(f"Provided path {path} is not a directory.")
+
+        native_model_path = path / ModelStorageBaseNames.NATIVE_MODEL
+        self.save_model(regressor.regressor_, native_model_path)
+        logger.debug("Saved native model for '%s' to %s", self.name, native_model_path)
+
+        logger.debug("Saving regressor to %s", path)
+
+        # to not save the model twice
+        regressor_instance = regressor.regressor_
+        regressor.regressor_ = None
+
+        save_joblib(regressor, path, ModelStorageBaseNames.SKELETON_NAME)
+
+        # restore the regressor state
+        regressor.regressor_ = regressor_instance
+
+    def load_regressor(self, path: Path) -> TransformedTargetRegressor:
+        """
+        Load the whole regressor from the specified path, including model and transformer.
+
+        Args:
+            path: The path to the directory containing the data
+
+        Returns:
+            The loaded TransformedTargetRegressor
+        """
+        native_model_path = path / ModelStorageBaseNames.NATIVE_MODEL
+        if not native_model_path.exists():
+            raise FileNotFoundError(f"Native model file {native_model_path} does not exist.")
+
+        skeleton_path = path / f"{ModelStorageBaseNames.SKELETON_NAME}.joblib"
+        if not skeleton_path.exists():
+            raise FileNotFoundError(f"Model skeleton file {skeleton_path} does not exist.")
+
+        logger.debug("Loading model '%s' from %s", self.name, path)
+        model = self.load_model(native_model_path)
+
+        logger.debug("Loading regressor from %s", skeleton_path)
+        regressor = joblib.load(skeleton_path)
+        regressor.regressor_ = model
+
+        return regressor
+
 
 class XGBoostModel(Model):
     __xgb: Optional[ModuleType] = None
@@ -79,7 +137,11 @@ class XGBoostModel(Model):
     def xgb(self) -> ModuleType:
         # an ugly hack to be able to switch between models, not requiring all of them
         if XGBoostModel.__xgb is None:
-            import xgboost
+            try:
+                import xgboost
+            except ImportError:
+                logger.error("XGBoost is not installed. Please install it to use XGBoostModel.")
+                raise
 
             XGBoostModel.__xgb = xgboost
 
@@ -114,7 +176,11 @@ class LightGBMModel(Model):
     def lgbm(self) -> ModuleType:
         # an ugly hack to be able to switch between models, not requiring all of them
         if LightGBMModel.__lgbm is None:
-            import lightgbm
+            try:
+                import lightgbm
+            except ImportError:
+                logger.error("LightGBM is not installed. Please install it to use LightGBMModel.")
+                raise
 
             LightGBMModel.__lgbm = lightgbm
 

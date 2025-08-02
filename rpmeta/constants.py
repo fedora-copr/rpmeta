@@ -66,3 +66,8 @@ class TimeFormat(StrEnum):
     @classmethod
     def get_all_formats(cls) -> list[str]:
         return [fmt.value for fmt in cls]
+
+
+class ModelStorageBaseNames(StrEnum):
+    NATIVE_MODEL = "native_model.txt"
+    SKELETON_NAME = "model_skeleton"

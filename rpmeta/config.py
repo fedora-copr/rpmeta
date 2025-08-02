@@ -166,10 +166,6 @@ class Model(BaseModel):
         default=False,
         description="Enable verbose output during model training and evaluation",
     )
-    mmapped: bool = Field(
-        default=False,
-        description="Use memory-mapped regressor to save memory",
-    )
     behavior: ModelBehavior = Field(
         default_factory=ModelBehavior,
         description="Model behavior configuration",

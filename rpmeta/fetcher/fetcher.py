@@ -25,7 +25,7 @@ def _get_distro_aliases_retry(retries=5, delay=20) -> dict:
     """
     for attempt in range(1, retries + 1):
         try:
-            return get_distro_aliases()
+            return get_distro_aliases(cache=True)
         except requests.exceptions.RequestException as e:
             logging.warning(f"Attempt {attempt}/{retries} failed: {e}")
             if attempt < retries:

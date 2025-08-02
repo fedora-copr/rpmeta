@@ -49,13 +49,18 @@ def test_koji_fetcher_fetch_data(
 @patch("rpmeta.fetcher.fetcher.Client")
 @patch("rpmeta.fetcher.fetcher.next_page", return_value=None)
 @patch("rpmeta.fetcher.fetcher.requests.get")
+@patch("rpmeta.fetcher.fetcher._get_distro_aliases_retry")
 def test_copr_fetcher_fetch_data(
+    mock_get_distro_aliases,
     mock_requests_get,
     mock_next_page,
     mock_client,
     dataset_record,
     example_config,
 ):
+    mock_get_distro_aliases.return_value = {
+        "fedora-all": [SimpleNamespace(version_number="36", name="fedora")],
+    }
     mock_response = mock_requests_get.return_value
     mock_response.status_code = 200
     mock_response.content.decode.return_value = "mock lscpu log"

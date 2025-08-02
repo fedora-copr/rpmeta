@@ -12,7 +12,6 @@ from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_err
 
 from rpmeta.config import Config
 from rpmeta.model import Model
-from rpmeta.store import ModelStorage
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +38,6 @@ class BestModelResult:
 class ModelTrainer(Model):
     def __init__(self, name: str, config: Config) -> None:
         super().__init__(name, config)
-
-        self._model_storage = ModelStorage(
-            model_name=self.name,
-        )
 
         now = time.strftime("%Y-%m-%d_%H-%M-%S")
         self._model_directory = self.config.result_dir / f"{self.name}_{now}"
@@ -122,10 +117,7 @@ class ModelTrainer(Model):
         best_regressor.fit(X_train, y_train)
         y_pred = best_regressor.predict(X_test)
 
-        self._model_storage.save_model(
-            best_regressor,
-            self._model_directory,
-        )
+        self.save_regressor(best_regressor, self._model_directory)
 
         best_result = BestModelResult(
             model_name=self.name,
@@ -159,5 +151,5 @@ class ModelTrainer(Model):
         regressor.fit(X, y)
         logger.debug("Model fitting complete.")
 
-        self._model_storage.save_model(regressor, self._model_directory)
+        self.save_regressor(regressor, self._model_directory)
         return self._model_directory
