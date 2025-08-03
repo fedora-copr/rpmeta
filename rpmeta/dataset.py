@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -124,8 +124,7 @@ class InputRecord(BaseModel):
     hw_info: HwInfo = Field(
         description="Hardware information of the build system",
     )
-    mock_chroot: Optional[str] = Field(
-        default=None,
+    mock_chroot: str = Field(
         description="Mock chroot in format '<distro>-<version>-<arch>' (e.g., 'fedora-41-x86_64')",
         examples=["fedora-41-x86_64", "centos-stream-9-x86_64"],
     )
@@ -138,31 +137,22 @@ class InputRecord(BaseModel):
         return f"{self.package_name}-{self.epoch}:{self.version}-{self.os_arch}"
 
     @property
-    def os(self) -> Optional[str]:
-        if self.mock_chroot is None:
-            return None
-
+    def os(self) -> str:
         return self.mock_chroot.rsplit("-", 2)[0]
 
     @property
-    def os_family(self) -> Optional[str]:
-        if self.os is None:
-            return None
-
+    def os_family(self) -> str:
         return self.os.rsplit("-")[0]
 
     @property
-    def os_version(self) -> Optional[str]:
+    def os_version(self) -> str:
         if self.mock_chroot is None:
             return None
 
         return self.mock_chroot.rsplit("-", 2)[1]
 
     @property
-    def os_arch(self) -> Optional[str]:
-        if self.mock_chroot is None:
-            return None
-
+    def os_arch(self) -> str:
         return self.mock_chroot.rsplit("-", 2)[2]
 
     def to_model_dict(self) -> dict[str, Any]:

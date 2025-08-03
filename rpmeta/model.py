@@ -147,13 +147,18 @@ class XGBoostModel(Model):
 
         return XGBoostModel.__xgb
 
+    @property
+    def _regressor(self) -> type["XGBRegressor"]:
+        return self.xgb.XGBRegressor
+
     def _make_regressor(self, params: dict[str, int | float | str]) -> "XGBRegressor":
-        return self.xgb.XGBRegressor(
+        return self._regressor(
             enable_categorical=True,
             tree_method="hist",
             n_jobs=self.config.model.n_jobs,
             random_state=self.config.model.random_state,
             objective="reg:squarederror",
+            early_stopping_rounds=self.config.model.xgboost.early_stopping_rounds,
             **params,
         )
 
@@ -186,12 +191,21 @@ class LightGBMModel(Model):
 
         return LightGBMModel.__lgbm
 
+    @property
+    def _regressor(self) -> type["LGBMRegressor"]:
+        return self.lgbm.LGBMRegressor
+
     def _make_regressor(self, params: dict[str, int | float | str]) -> "LGBMRegressor":
-        return self.lgbm.LGBMRegressor(
+        early_stopping_rounds = 0
+        if self.config.model.lightgbm.early_stopping_rounds is not None:
+            early_stopping_rounds = self.config.model.lightgbm.early_stopping_rounds
+
+        return self._regressor(
             n_jobs=self.config.model.n_jobs,
             random_state=self.config.model.random_state,
             verbose=1 if self.config.model.verbose else -1,
             objective="regression",
+            early_stopping_rounds=early_stopping_rounds,
             **params,
         )
 

@@ -100,8 +100,8 @@ class ModelTrainingManager:
         self.df = self.df[(self.df[TARGET] >= 0) & (self.df[TARGET] <= 1917)]
 
         logger.info("Removing duplicates and NaN values")
-        self.df = self.df.drop_duplicates(keep=False)
-        self.df = self.df.dropna()
+        self.df.drop_duplicates(inplace=True, keep="first")
+        self.df.dropna(inplace=True)
         logger.info(f"Removed duplicates and NaN values, resulting in {len(self.df)} records.")
 
         logger.info("Removing duplicates and outliers")

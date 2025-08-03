@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from pathlib import Path
 
 from sklearn.compose import TransformedTargetRegressor
@@ -83,12 +84,18 @@ class Predictor:
         pred = self.model.predict(df)
         minutes = int(pred[0].item())
 
+        if minutes <= 0:
+            # this really shouldn't happen, since the model is trained on positive values
+            # but you never know...
+            logger.error("Model prediction returned a negative value, which is invalid.")
+            minutes = 1
+
         if behavior.time_format == TimeFormat.SECONDS:
             return minutes * 60
         if behavior.time_format == TimeFormat.MINUTES:
             return minutes
         if behavior.time_format == TimeFormat.HOURS:
-            return minutes // 60
+            return math.ceil(minutes / 60)
 
         logger.error(
             f"Unknown time format {behavior.time_format}. Returning minutes as default.",

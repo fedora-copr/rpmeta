@@ -38,14 +38,16 @@ time_format = "seconds" # Format for predicted time output
 
 # XGBoost model parameters
 [model.xgboost]
-n_estimators = 651 # Number of boosting rounds
-learning_rate = 0.2248 # Step size shrinkage used to prevent overfitting
-max_depth = 8 # Maximum depth of a tree
-subsample = 0.9789 # Subsample ratio of the training instances
-colsample_bytree = 0.9835 # Subsample ratio of columns when constructing each tree
-reg_alpha = 0.8798 # L1 regularization term on weights
-reg_lambda = 5.8016 # L2 regularization term on weights
-min_child_weight = 1.1275 # Minimum sum of instance weight needed in a child
+n_estimators = 1003 # Number of boosting rounds
+learning_rate = 0.2415 # Step size shrinkage used to prevent overfitting
+max_depth = 5 # Maximum depth of a tree
+subsample = 0.5693 # Subsample ratio of the training instances
+colsample_bytree = 0.6181 # Subsample ratio of columns when constructing each tree
+reg_alpha = 0.0305 # L1 regularization term on weights
+reg_lambda = 7.6076 # L2 regularization term on weights
+min_child_weight = 1.101 # Minimum sum of instance weight needed in a child
+gamma = 1.904 # Minimum loss reduction required to make a further partition on a leaf node
+early_stopping_rounds = 10 # Number of rounds for early stopping
 [model.xgboost.params] # Optional model parameters
 objective = "reg:squarederror"
 tree_method = "hist"
@@ -62,6 +64,7 @@ colsample_bytree = 0.9653 # Subsample ratio of columns when constructing each tr
 lambda_l1 = 0.0005 # L1 regularization term on weights
 lambda_l2 = 0.0001 # L2 regularization term on weights
 max_bin = 282 # Max number of bins that feature values will be bucketed in
+early_stopping_rounds = 10 # Number of rounds for early stopping
 [model.lightgbm.params] # Optional model parameters
 objective = "reg:squarederror"
 tree_method = "hist"
