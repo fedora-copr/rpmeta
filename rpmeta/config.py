@@ -57,36 +57,45 @@ class XGBoostParams(ModelParams):
     """XGBoost model parameters"""
 
     n_estimators: int = Field(
-        default=651,
+        default=1003,
         description="Number of boosting rounds",
     )
     learning_rate: float = Field(
-        default=0.2248,
+        default=0.2415,
         description="Step size shrinkage used to prevent overfitting",
     )
     max_depth: int = Field(
-        default=8,
+        default=5,
         description="Maximum depth of a tree",
     )
     subsample: float = Field(
-        default=0.9789,
+        default=0.5693,
         description="Subsample ratio of the training instances",
     )
     colsample_bytree: float = Field(
-        default=0.9835,
+        default=0.6181,
         description="Subsample ratio of columns when constructing each tree",
     )
     reg_alpha: float = Field(
-        default=0.8798,
+        default=0.0305,
         description="L1 regularization term on weights",
     )
     reg_lambda: float = Field(
-        default=5.8016,
+        default=7.6076,
         description="L2 regularization term on weights",
     )
     min_child_weight: float = Field(
-        default=1.1275,
+        default=1.101,
         description="Minimum sum of instance weight needed in a child",
+    )
+    gamma: float = Field(
+        default=1.904,
+        description="Minimum loss reduction required to make a further partition on a leaf node",
+    )
+    early_stopping_rounds: Optional[int] = Field(
+        default=None,
+        description="Number of rounds for early stopping",
+        examples=[10, 20, 50],
     )
 
 
@@ -132,6 +141,11 @@ class LightGBMParams(ModelParams):
     max_bin: int = Field(
         default=282,
         description="Max number of bins that feature values will be bucketed in",
+    )
+    early_stopping_rounds: Optional[int] = Field(
+        default=None,
+        description="Number of rounds for early stopping",
+        examples=[10, 20, 50],
     )
 
 

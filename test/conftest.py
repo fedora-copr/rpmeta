@@ -1,4 +1,6 @@
+import itertools
 import json
+import tempfile
 from pathlib import Path
 from subprocess import Popen
 from time import sleep
@@ -13,14 +15,40 @@ from rpmeta.dataset import HwInfo, InputRecord, Record
 from rpmeta.trainer.base import Model
 from test.helpers import run_rpmeta_cli
 
+model_names = ModelEnum.get_all_model_names()
+early_stopping_options = [False, True]
+all_params = list(itertools.product(model_names, early_stopping_options))
 
-@pytest.fixture(params=ModelEnum.get_all_model_names())
+
+@pytest.fixture(params=all_params)
 def model_and_types(request, tmp_path_factory):
-    model_name = request.param
+    model_name, early_stopping_rounds = request.param
     dataset_path = Path(__file__).parent / "data" / "dataset_train.json"
     result_dir = tmp_path_factory.mktemp(f"models_{model_name}")
 
-    result = run_rpmeta_cli(
+    config_path = None
+    if early_stopping_rounds:
+        # creaate temporary config file with early stopping rounds
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".toml",
+            delete=False,
+        ) as config_file:
+            string = """
+            [model.xgboost]
+            early_stopping_rounds = 10
+            [model.lightgbm]
+            early_stopping_rounds = 10
+            """
+            config_file.write(string)
+            config_file.flush()
+            config_path = Path(config_file.name)
+
+    cmd = []
+    if config_path:
+        cmd.extend(["--config", str(config_path)])
+
+    cmd.extend(
         [
             "train",
             "--dataset",
@@ -32,6 +60,8 @@ def model_and_types(request, tmp_path_factory):
             "run",
         ],
     )
+
+    result = run_rpmeta_cli(cmd)
     assert result.returncode == 0, result.stderr or result.stdout
 
     cat_dtypes_files = list(result_dir.glob("*.json"))

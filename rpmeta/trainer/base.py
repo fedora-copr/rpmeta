@@ -43,9 +43,8 @@ class ModelTrainer(Model):
         self._model_directory = self.config.result_dir / f"{self.name}_{now}"
         self._model_directory.mkdir(parents=True, exist_ok=True)
 
-    @staticmethod
     @abstractmethod
-    def param_space(trial: Trial) -> dict[str, Any]:
+    def param_space(self, trial: Trial) -> dict[str, Any]:
         """Suggest hyperparameters for Optuna trial"""
         ...
 
