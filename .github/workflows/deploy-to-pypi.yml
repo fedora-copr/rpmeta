@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
