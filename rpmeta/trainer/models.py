@@ -48,7 +48,8 @@ class XGBoostModelTrainer(XGBoostModel, ModelTrainer):
 
     def param_space(self, trial: Trial) -> dict[str, Any]:
         if self.config.model.xgboost.early_stopping_rounds is None:
-            n_estimators = trial.suggest_int("n_estimators", 200, 1500)
+            pass
+            # n_estimators = trial.suggest_int("n_estimators", 200, 1500)
         else:
             n_estimators = 2000
 

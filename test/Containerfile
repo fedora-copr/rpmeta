@@ -1,4 +1,4 @@
-FROM fedora:latest as builder
+FROM fedora:42 AS builder
 
 RUN dnf install -y \
     gcc \
@@ -6,6 +6,7 @@ RUN dnf install -y \
     python3-devel \
     uv \
     clang \
+    zlib-devel \
     && dnf clean all
 
 WORKDIR /build
@@ -15,7 +16,7 @@ COPY pyproject.toml uv.lock* ./
 RUN uv sync --all-extras --all-groups
 
 
-FROM fedora:latest
+FROM fedora:42
 
 RUN dnf install -y \
     gcc \
@@ -23,6 +24,7 @@ RUN dnf install -y \
     python3-devel \
     uv \
     clang \
+    zlib-devel \
     && dnf clean all
 
 ENV TERM=xterm-256color

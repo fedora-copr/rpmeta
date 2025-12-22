@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 def run_rpmeta_cli(params: list[str]) -> subprocess.CompletedProcess:
     cmd = ["python3", "-m", "rpmeta.cli.main", "--log-level", "DEBUG", *params]
-    logger.debug(f"Running command: {' '.join(cmd)}")
+    logger.debug("Running command: %s", " ".join(cmd))
     return subprocess.run(
         cmd,
         capture_output=True,

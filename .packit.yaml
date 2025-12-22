@@ -15,6 +15,9 @@ jobs:
     branch: main
     list_on_homepage: True
     preserve_project: True
+    actions:
+      post-modifications:
+        - bash -c "sed -i '1i%global git_build 1' files/rpmeta.spec"
 
   - job: copr_build
     trigger: release
