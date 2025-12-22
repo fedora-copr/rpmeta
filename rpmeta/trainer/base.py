@@ -28,11 +28,12 @@ class TrialResult:
 @dataclass
 class BestModelResult:
     model_name: str
-    model: Any
+    model_path: Path
     r2: float
     neg_rmse: float
     neg_mae: float
     params: dict[str, Any]
+    model: Any = None  # Optional: only set when needed for immediate use
 
 
 class ModelTrainer(Model):
@@ -120,13 +121,12 @@ class ModelTrainer(Model):
 
         best_result = BestModelResult(
             model_name=self.name,
-            # TODO: rather use the path to the model in the results dir, this consumes
-            # a lot of memory if the model is large
-            model=best_regressor,
+            model_path=self._model_directory,
             r2=r2_score(y_test, y_pred),
             neg_rmse=-root_mean_squared_error(y_test, y_pred),
             neg_mae=-mean_absolute_error(y_test, y_pred),
             params=study.best_trial.params,
+            model=best_regressor,  # Keep for immediate use in visualizer
         )
         return study, trial_results, best_result
 

@@ -4,7 +4,13 @@ It provides a set of commands for training a predictive model, making prediction
 and serving a REST API endpoint.
 }
 
-Name:           rpmeta
+%if 0%{?git_build}
+%global pkg_name rpmeta-git
+%else
+%global pkg_name rpmeta
+%endif
+
+Name:           %pkg_name
 Version:        0.1.0
 Release:        %autorelease
 Summary:        Estimate duration of RPM package build
@@ -21,15 +27,25 @@ BuildRequires:  python3-rpm-macros
 BuildRequires:  python3dist(click-man)
 BuildRequires:  systemd-rpm-macros
 
+# prevent having both
+%if 0%{?git_build}
+Conflicts:      rpmeta
+%else
+Conflicts:      rpmeta-git
+%endif
+
 
 %description
 %{desc}
+%if 0%{?git_build}
+
+This is a development build from the main branch.
+%endif
 
 
 %package -n     server
 Summary:        RPMeta server module for serving REST API endpoint
 Requires:       %{name} = %{version}-%{release}
-%systemd_requires
 
 %description -n server
 This package provides the server module of RPMeta, including a REST API endpoint for making
@@ -123,6 +139,15 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildro
 %{_tmpfilesdir}/%{name}.conf
 %{_presetdir}/95-%{name}.preset
 %config(noreplace) %{_sysconfdir}/sysconfig/rpmeta
+
+%post -n server
+%systemd_post rpmeta.service
+
+%preun -n server
+%systemd_preun rpmeta.service
+
+%postun -n server
+%systemd_postun_with_restart rpmeta.service
 
 
 %files -n trainer

@@ -4,12 +4,15 @@ from pathlib import Path
 from typing import Optional
 
 import click
+import pandas as pd
 from click import Path as ClickPath
 
 from rpmeta.cli.ctx import Context
-from rpmeta.constants import ModelEnum
+from rpmeta.constants import ALL_FEATURES, TARGET, ModelEnum
 from rpmeta.dataset import InputRecord
 from rpmeta.predictor import Predictor
+from rpmeta.trainer.base import BestModelResult
+from rpmeta.trainer.visualizer import ResultsHandler
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +76,7 @@ def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: b
     """
     Start the API server on specified host and port.
 
+    \b
     The server will accept HTTP POST requests with JSON payloads containing the input data in
     format:
         {
@@ -146,6 +150,7 @@ def predict(ctx: click.Context, data: str, output_type: str):
     """
     Make single prediction on the input data.
 
+    \b
     WARNING: The model must be loaded into memory on each query. This mode is extremely
     inefficient for frequent real-time queries.
 
@@ -181,3 +186,68 @@ def predict(ctx: click.Context, data: str, output_type: str):
         print(json.dumps({"prediction": prediction}))
     else:
         print(f"Prediction: {prediction}")
+
+
+@run.command("visualize")
+@click.option(
+    "-d",
+    "--dataset",
+    type=ClickPath(exists=True, dir_okay=False, resolve_path=True, file_okay=True, path_type=Path),
+    required=True,
+    help="Path to the dataset file used for testing the model",
+)
+@click.pass_context
+def visualize(ctx: click.Context, dataset: Path):
+    """
+    Visualize the model performance.
+    This command will generate various plots and save them to the model directory.
+    """
+    from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
+
+    predictor = ctx.obj.predictor
+
+    with open(dataset, encoding="utf-8") as f:
+        data = json.load(f)
+
+    for record in data:
+        record["mock_chroot"] = f"{record['os']}-{record['os_version']}-{record['os_arch']}"
+
+    df = pd.json_normalize(data)
+
+    for col, cat_list in predictor.category_maps.items():
+        dtype = pd.CategoricalDtype(categories=cat_list, ordered=False)
+        df[col] = df[col].astype(dtype)
+
+    df_actuals = df[TARGET]
+    df_predictions = predictor.model.predict(df[ALL_FEATURES])
+
+    X_test = df[ALL_FEATURES]  # noqa: N806
+    y_test = df[TARGET]
+
+    r2 = r2_score(df_actuals, df_predictions)
+    mae = mean_absolute_error(df_actuals, df_predictions)
+    rmse = root_mean_squared_error(df_actuals, df_predictions)
+
+    best_model_result = BestModelResult(
+        model_name="testing_model",
+        model_path=Path("."),  # Not applicable for loaded models
+        neg_rmse=-rmse,
+        neg_mae=-mae,
+        r2=r2,
+        params={},  # Not available when loading a model
+        model=predictor.model,
+    )
+
+    best_models = {"testing_model": best_model_result}
+    result_handler = ResultsHandler(
+        all_trials={},
+        best_models=best_models,
+        studies={},
+        X_test=X_test,
+        y_test=y_test,
+        config=ctx.obj.config,
+    )
+
+    result_handler.plot_predictions()
+    result_handler.plot_distribution()
+    result_handler.save_best_json()

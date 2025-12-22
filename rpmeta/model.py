@@ -10,7 +10,6 @@ from sklearn.compose import TransformedTargetRegressor
 
 from rpmeta.config import Config
 from rpmeta.constants import ModelEnum, ModelStorageBaseNames
-from rpmeta.helpers import save_joblib
 
 if TYPE_CHECKING:
     from lightgbm import LGBMRegressor
@@ -77,6 +76,10 @@ class Model(ABC):
         """
         Save the whole regressor to the specified path, including model and transformer.
 
+        The regressor is split into two parts:
+        1. Native model - saved using the library's native format for best compatibility
+        2. Skeleton - the TransformedTargetRegressor without the model, saved via joblib
+
         Args:
             regressor: The TransformedTargetRegressor to save
             path: The directory to save the regressor
@@ -88,16 +91,19 @@ class Model(ABC):
         self.save_model(regressor.regressor_, native_model_path)
         logger.debug("Saved native model for '%s' to %s", self.name, native_model_path)
 
-        logger.debug("Saving regressor to %s", path)
+        logger.debug("Saving regressor skeleton to %s", path)
 
         # to not save the model twice
         regressor_instance = regressor.regressor_
         regressor.regressor_ = None
 
-        save_joblib(regressor, path, ModelStorageBaseNames.SKELETON_NAME)
+        skeleton_path = path / f"{ModelStorageBaseNames.SKELETON_NAME}.joblib"
+        joblib.dump(regressor, skeleton_path)
+        logger.debug("Saved object to %s", skeleton_path)
 
         # restore the regressor state
         regressor.regressor_ = regressor_instance
+        logger.info("Saved regressor skeleton to %s", skeleton_path)
 
     def load_regressor(self, path: Path) -> TransformedTargetRegressor:
         """
@@ -117,13 +123,15 @@ class Model(ABC):
         if not skeleton_path.exists():
             raise FileNotFoundError(f"Model skeleton file {skeleton_path} does not exist.")
 
-        logger.debug("Loading model '%s' from %s", self.name, path)
+        logger.debug("Loading native model '%s' from %s", self.name, native_model_path)
         model = self.load_model(native_model_path)
 
-        logger.debug("Loading regressor from %s", skeleton_path)
-        regressor = joblib.load(skeleton_path)
+        logger.debug("Loading regressor skeleton from %s", skeleton_path)
+        # Use mmap_mode='r' for memory-efficient loading of large models
+        regressor: TransformedTargetRegressor = joblib.load(skeleton_path, mmap_mode="r")
         regressor.regressor_ = model
 
+        logger.info("Successfully loaded regressor from %s", path)
         return regressor
 
 
@@ -152,6 +160,7 @@ class XGBoostModel(Model):
         return self.xgb.XGBRegressor
 
     def _make_regressor(self, params: dict[str, int | float | str]) -> "XGBRegressor":
+        logger.debug("Creating XGBoost regressor with params: %s", params)
         return self._regressor(
             enable_categorical=True,
             tree_method="hist",
@@ -166,8 +175,10 @@ class XGBoostModel(Model):
         regressor.save_model(path)
 
     def load_model(self, path: Path) -> "XGBRegressor":
-        regressor = self._make_regressor({})
+        regressor = self.xgb.XGBRegressor()
         regressor.load_model(path)
+        params = regressor.get_xgb_params()
+        logger.debug("Loaded XGBoost model with booster params: %s", params)
         return regressor
 
 
@@ -210,13 +221,41 @@ class LightGBMModel(Model):
         )
 
     def save_model(self, regressor: "LGBMRegressor", path: Path) -> None:
-        regressor.booster_.save_model(path)
+        regressor.booster_.save_model(str(path))
 
     def load_model(self, path: Path) -> "LGBMRegressor":
-        return self.lgbm.Booster(model_file=path)
+        booster = self.lgbm.Booster(model_file=str(path))
+        regressor = self._regressor()
+        regressor._Booster = booster
+        regressor.fitted_ = True
+        regressor._n_features = booster.num_feature()
+        regressor._n_features_in = booster.num_feature()
+        regressor.n_features_in_ = booster.num_feature()
+
+        booster_params = booster.params
+        if "objective" in booster_params:
+            regressor._objective = booster_params["objective"]
+        else:
+            regressor._objective = "regression"
+
+        logger.debug(
+            "Loaded LightGBM model with %d features, objective: %s",
+            regressor.n_features_in_,
+            regressor._objective,
+        )
+        return regressor
 
 
 def get_all_models(config: Optional[Config] = None) -> list[Model]:
+    """
+    Get instances of all available model types.
+
+    Args:
+        config: Configuration to use. If None, uses default Config.
+
+    Returns:
+        List of Model instances for each supported model type.
+    """
     if config is None:
         config = Config()
 
@@ -224,3 +263,28 @@ def get_all_models(config: Optional[Config] = None) -> list[Model]:
         XGBoostModel(config=config),
         LightGBMModel(config=config),
     ]
+
+
+def get_model_by_name(model_name: str, config: Optional[Config] = None) -> Model:
+    """
+    Get a specific model instance by name.
+
+    Args:
+        model_name: The name of the model (case-insensitive)
+        config: Configuration to use. If None, uses default Config.
+
+    Returns:
+        The Model instance matching the given name.
+
+    Raises:
+        ValueError: If no model matches the given name.
+    """
+    model_name_lower = model_name.lower()
+    for model in get_all_models(config):
+        if model.name == model_name_lower:
+            return model
+
+    available = [m.name for m in get_all_models(config)]
+    raise ValueError(
+        f"Model '{model_name}' is not supported. Available models: {available}",
+    )

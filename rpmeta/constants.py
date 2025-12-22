@@ -69,5 +69,5 @@ class TimeFormat(StrEnum):
 
 
 class ModelStorageBaseNames(StrEnum):
-    NATIVE_MODEL = "native_model.txt"
+    NATIVE_MODEL = "native_model"
     SKELETON_NAME = "model_skeleton"

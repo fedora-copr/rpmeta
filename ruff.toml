@@ -46,6 +46,7 @@ select = [
     "RSE", # flake8-raise
     "RET", # flake8-return
     "RUF", # ruff special rules
+    "G", # flake8-logging-format
 ]
 ignore = []
 
@@ -55,6 +56,10 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[lint.per-file-ignores]
+# Ignore N806 (variable naming) in test files - X and y are ML conventions
+"test/**/*.py" = ["N806"]
 
 [format]
 # Like Black, use double quotes for strings.

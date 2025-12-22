@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -50,7 +50,7 @@ class HwInfo(BaseModel):
 
     @classmethod
     def parse_from_lscpu(cls, content: str) -> "HwInfo":
-        logger.debug(f"lscpu output: {content}")
+        logger.debug("lscpu output: %s", content)
         hw_info: dict[str, int | str] = {}
         for line in content.splitlines():
             if line.startswith("Model name:"):
@@ -69,7 +69,7 @@ class HwInfo(BaseModel):
         if hw_info.get("cpu_model") is None:
             hw_info["cpu_model"] = "unknown"
 
-        logger.debug(f"Extracted hardware info: {hw_info}")
+        logger.debug("Extracted hardware info: %s", hw_info)
         return cls(**hw_info)
 
     @field_validator("cpu_model", mode="before")
@@ -145,7 +145,7 @@ class InputRecord(BaseModel):
         return self.os.rsplit("-")[0]
 
     @property
-    def os_version(self) -> str:
+    def os_version(self) -> Optional[str]:
         if self.mock_chroot is None:
             return None
 

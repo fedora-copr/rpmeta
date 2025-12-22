@@ -27,7 +27,7 @@ def _get_distro_aliases_retry(retries=5, delay=20) -> dict:
         try:
             return get_distro_aliases(cache=True)
         except requests.exceptions.RequestException as e:
-            logging.warning(f"Attempt {attempt}/{retries} failed: {e}")
+            logging.warning("Attempt %d/%d failed: %s", attempt, retries, e)
             if attempt < retries:
                 time.sleep(delay)
                 continue
@@ -82,7 +82,7 @@ class KojiFetcher(Fetcher):
     ) -> None:
         super().__init__(config, start_date, end_date, limit)
 
-        logger.info(f"Initializing KojiFetcher instance: {self.config.koji.hub_url}")
+        logger.info("Initializing KojiFetcher instance: %s", self.config.koji.hub_url)
         self._koji_session = koji.ClientSession(self.config.koji.hub_url)
 
         self._host_hw_info_map: dict[int, HwInfo] = {}
@@ -90,7 +90,7 @@ class KojiFetcher(Fetcher):
 
     def _fetch_hw_info_from_koji(self, task_info: dict) -> Optional[HwInfo]:
         task_id = task_info["id"]
-        logger.info(f"Fetching hw_info for task: {task_id}")
+        logger.info("Fetching hw_info for task: %d", task_id)
         if task_info.get("host_id") and task_info["host_id"] in self._host_hw_info_map:
             return self._host_hw_info_map[task_info["host_id"]]
 
@@ -98,7 +98,7 @@ class KojiFetcher(Fetcher):
             lscpu_log = self._koji_session.downloadTaskOutput(task_id, "hw_info.log").decode(
                 "utf-8",
             )
-            logger.debug(f"lscpu log for task: {task_id} - {lscpu_log}")
+            logger.debug("lscpu log for task: %d - %s", task_id, lscpu_log)
 
             hw_info = HwInfo.parse_from_lscpu(lscpu_log)
             self._host_hw_info_map[task_info["host_id"]] = hw_info
@@ -108,11 +108,12 @@ class KojiFetcher(Fetcher):
                 return self._host_hw_info_map[task_info["host_id"]]
 
             logger.error(
-                f"Failed to fetch hw_info for task: {task_id}, no hw_info.log found in map",
+                "Failed to fetch hw_info for task: %d, no hw_info.log found in map",
+                task_id,
             )
             return None
         except Exception as e:
-            logger.error(f"Failed to fetch hw_info for task: {task_id} - {e!s}")
+            logger.error("Failed to fetch hw_info for task: %d - %s", task_id, e)
             return None
 
     def _get_chroot_from_release(self, release: str, arch: str) -> Optional[str]:
@@ -136,7 +137,7 @@ class KojiFetcher(Fetcher):
         if match is not None:
             return f"{match}-{arch}"
 
-        logger.error(f"Failed to parse chroot from release: {release}")
+        logger.error("Failed to parse chroot from release: %s", release)
         return None
 
     def _fetch_dataset_record(self, build: dict, task_info: dict) -> Optional[Record]:
@@ -161,7 +162,7 @@ class KojiFetcher(Fetcher):
         builds: list[dict],
     ) -> None:
         for build in builds:
-            logger.info(f"Fetching build: {build['nvr']}")
+            logger.info("Fetching build: %s", build["nvr"])
             try:
                 task_descendents = self._koji_session.getTaskDescendents(
                     build["task_id"],
@@ -170,12 +171,12 @@ class KojiFetcher(Fetcher):
                     # this is the task that produces the RPM, thus it has the hw_info.log needed
                     # for HwInfo dataclass
                     if task_info["method"] == "buildArch":
-                        logger.info(f"Fetching task descendant: {task_info['id']}")
+                        logger.info("Fetching task descendant: %d", task_info["id"])
                         dataset_record = self._fetch_dataset_record(build, task_info)
                         if dataset_record:
                             successful_builds.append(dataset_record)
             except koji.GenericError as e:
-                logger.error(f"Failed to fetch build: {e!s}")
+                logger.error("Failed to fetch build: %s", e)
                 continue
 
     def fetch_data(self) -> list[Record]:
@@ -190,7 +191,7 @@ class KojiFetcher(Fetcher):
                 if self.end_date:
                     time_params["createdBefore"] = self.end_date
 
-                logger.info(f"Fetching page {self._current_page} of builds...")
+                logger.info("Fetching page %d of builds...", self._current_page)
                 builds = self._koji_session.listBuilds(
                     state=koji.BUILD_STATES["COMPLETE"],
                     queryOpts={
@@ -207,7 +208,7 @@ class KojiFetcher(Fetcher):
                 self._append_batch_of_successful_builds(successful_builds, builds)
                 self._current_page += 1
             except Exception as e:
-                logger.error(f"Failed to fetch builds: {e!s}")
+                logger.error("Failed to fetch builds: %s", e)
                 # Sometimes koji throws an generic error, unexpected exceptions or something
                 # like that. In that case, just skip to next page instead... this is dealing with
                 # really old data so the koji python API freaks out sometimes.
@@ -269,7 +270,8 @@ class CoprFetcher(Fetcher):
         for build_chroot in tqdm.tqdm(build_chroots):
             if not build_chroot.result_dir_url:
                 logger.error(
-                    f"Failed to fetch path_to_hw_info for build_chroot: {build_chroot.id}",
+                    "Failed to fetch path_to_hw_info for build_chroot: %d",
+                    build_chroot.id,
                 )
                 continue
 
@@ -288,10 +290,10 @@ class CoprFetcher(Fetcher):
                 build_duration=int(build_chroot.ended_on - build_chroot.started_on),
             )
             if record:
-                logger.info(f"Succesfully retrieved record for {record.neva}")
+                logger.info("Succesfully retrieved record for %s", record.neva)
                 result.append(record)
             else:
-                logger.warning(f"Parsing for build chroot {build_chroot.id} failed")
+                logger.warning("Parsing for build chroot %d failed", build_chroot.id)
 
         return result
 
@@ -305,19 +307,20 @@ class CoprFetcher(Fetcher):
     ) -> Optional[Record]:
         try:
             url_to_hw_info = CoprFetcher._get_url_to_hw_info_log(result_dir_url)
-            logger.debug(f"URL to hw_info: {url_to_hw_info}")
+            logger.debug("URL to hw_info: %s", url_to_hw_info)
             if url_to_hw_info.startswith("http://backend_httpd:5002"):
                 # Copr instance is running in a container, replace the URL then to real copr
                 logger.debug(
-                    f"Replacing URL to hw_info: {url_to_hw_info} for Copr instance",
+                    "Replacing URL to hw_info: %s for Copr instance",
+                    url_to_hw_info,
                 )
                 url_to_hw_info = url_to_hw_info.replace(
                     "http://backend_httpd:5002",
                     "https://download.copr.fedorainfracloud.org",
                 )
-                logger.debug(f"Replaced URL to hw_info: {url_to_hw_info}")
+                logger.debug("Replaced URL to hw_info: %s", url_to_hw_info)
 
-            logger.debug(f"Fetching hw_info from: {url_to_hw_info}")
+            logger.debug("Fetching hw_info from: %s", url_to_hw_info)
             hw_info = CoprFetcher._fetch_hw_info_from_copr(url_to_hw_info)
 
             if hw_info is None:
@@ -334,7 +337,7 @@ class CoprFetcher(Fetcher):
                 hw_info=hw_info,
             )
         except Exception as e:
-            logger.error(f"Failed to parse Copr build_chroot: {e!s}")
+            logger.error("Failed to parse Copr build_chroot: %s", e)
             return None
 
     @staticmethod
@@ -350,9 +353,9 @@ class CoprFetcher(Fetcher):
             response.raise_for_status()
             return HwInfo.parse_from_lscpu(response.content.decode("utf-8"))
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to fetch hw_info from Copr instance: {e!s}")
+            logger.error("Failed to fetch hw_info from Copr instance: %s", e)
         except OSError as e:
-            logger.error(f"Failed to read hw_info.log: {e!s}")
+            logger.error("Failed to read hw_info.log: %s", e)
 
         return None
 
@@ -363,7 +366,7 @@ class CoprFetcher(Fetcher):
     def _append_records_from_build(self, build: dict, records: list[Record]) -> None:
         build_chroots = self.client.build_chroot_proxy.get_list(build_id=build["id"])
         if not build_chroots:
-            logger.info(f"No build_chroots for build: {build['id']} found")
+            logger.info("No build_chroots for build: %d found", build["id"])
             return
 
         for build_chroot in build_chroots:
@@ -378,12 +381,13 @@ class CoprFetcher(Fetcher):
                 build_duration=int(build_chroot["ended_on"] - build_chroot["started_on"]),
             )
             if record:
-                logger.info(f"Succesfully retrieved record for {record.neva}")
+                logger.info("Succesfully retrieved record for %s", record.neva)
                 records.append(record)
             else:
                 logger.warning(
-                    f"Parsing for build chroot {build_chroot['name']} for "
-                    f"build id: {build['id']} failed",
+                    "Parsing for build chroot %s for build id: %s failed",
+                    build_chroot["name"],
+                    build["id"],
                 )
 
     def _get_records_from_project(self, project: dict) -> Optional[list[Record]]:
@@ -392,17 +396,17 @@ class CoprFetcher(Fetcher):
             projectname=project["name"],
         )
         if not builds:
-            logger.info(f"No builds for project: {project['full_name']} found")
+            logger.info("No builds for project: %s found", project["full_name"])
             return []
 
         records: list[Record] = []
         for build in builds:
             if build["ended_on"] is None or build["ended_on"] > self.end_date:
-                logger.info(f"Skipping build: {build['id']} as it's newer than end_date")
+                logger.info("Skipping build: %s as it's newer than end_date", build["id"])
                 continue
 
             if self.start_date and build["ended_on"] < self.start_date:
-                logger.info(f"Skipping build: {build['id']} as it's older than start_date")
+                logger.info("Skipping build: %s as it's older than start_date", build["id"])
                 return None
 
             self._append_records_from_build(build, records)
@@ -417,10 +421,10 @@ class CoprFetcher(Fetcher):
         while projects_page:
             for project in projects_page:
                 if project.get("name") is None or project.get("ownername") is None:
-                    logger.error(f"Skipping project with missing name or ownername: {project}")
+                    logger.error("Skipping project with missing name or ownername: %s", project)
                     continue
 
-                logger.info(f"Fetching builds for project: {project['full_name']}")
+                logger.info("Fetching builds for project: %s", project["full_name"])
                 records = self._get_records_from_project(project)
                 if records is None:
                     # end of date range reached

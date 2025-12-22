@@ -280,7 +280,8 @@ class ConfigManager:
     def _load_from_file(cls, config_file: Path) -> dict[str, Any]:
         if config_file.suffix.lower() != ".toml":
             logger.warning(
-                f"Unsupported config file format: {config_file}. Only toml is supported.",
+                "Unsupported config file format: %s. Only toml is supported.",
+                config_file.suffix.lower(),
             )
             return {}
 

@@ -1,3 +1,5 @@
+# TODO: most of this is AI generated, needs love
+
 import json
 import logging
 import os
