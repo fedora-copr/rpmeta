@@ -1,8 +1,8 @@
 import logging
-from pathlib import Path
-from typing import Any, Optional
-
 import tomllib
+from pathlib import Path
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 from rpmeta.constants import (
@@ -41,7 +41,7 @@ class Copr(BaseModel):
 class ModelParams(BaseModel):
     """Optional model parameters"""
 
-    params: Optional[dict[str, Any]] = Field(
+    params: dict[str, Any] | None = Field(
         default=None,
         description="Optional model parameters",
         examples=[
@@ -92,7 +92,7 @@ class XGBoostParams(ModelParams):
         default=1.904,
         description="Minimum loss reduction required to make a further partition on a leaf node",
     )
-    early_stopping_rounds: Optional[int] = Field(
+    early_stopping_rounds: int | None = Field(
         default=None,
         description="Number of rounds for early stopping",
         examples=[10, 20, 50],
@@ -142,7 +142,7 @@ class LightGBMParams(ModelParams):
         default=282,
         description="Max number of bins that feature values will be bucketed in",
     )
-    early_stopping_rounds: Optional[int] = Field(
+    early_stopping_rounds: int | None = Field(
         default=None,
         description="Number of rounds for early stopping",
         examples=[10, 20, 50],
@@ -205,7 +205,7 @@ class Logging(BaseModel):
         default="%Y-%m-%d %H:%M:%S",
         description="Date format for log timestamps",
     )
-    file: Optional[Path] = Field(
+    file: Path | None = Field(
         default=None,
         description="Path to the log file. If None, logs will be written to stderr",
         examples=["/var/log/rpmeta.log"],
@@ -265,7 +265,7 @@ class ConfigManager:
         return default_location
 
     @staticmethod
-    def _find_config_file() -> Optional[Path]:
+    def _find_config_file() -> Path | None:
         for location in CONFIG_LOCATIONS:
             if not location.exists():
                 continue
@@ -291,8 +291,8 @@ class ConfigManager:
     @classmethod
     def get_config(
         cls,
-        result_dir: Optional[Path] = None,
-        config_file: Optional[Path] = None,
+        result_dir: Path | None = None,
+        config_file: Path | None = None,
     ) -> Config:
         """
         Get the configuration object

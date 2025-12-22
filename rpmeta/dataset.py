@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -145,7 +145,7 @@ class InputRecord(BaseModel):
         return self.os.rsplit("-")[0]
 
     @property
-    def os_version(self) -> Optional[str]:
+    def os_version(self) -> str | None:
         if self.mock_chroot is None:
             return None
 

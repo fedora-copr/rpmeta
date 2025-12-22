@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import joblib
 import numpy as np
@@ -136,7 +136,7 @@ class Model(ABC):
 
 
 class XGBoostModel(Model):
-    __xgb: Optional[ModuleType] = None
+    __xgb: ModuleType | None = None
 
     def __init__(self, config: Config):
         super().__init__(ModelEnum.XGBOOST, config=config)
@@ -183,7 +183,7 @@ class XGBoostModel(Model):
 
 
 class LightGBMModel(Model):
-    __lgbm: Optional[ModuleType] = None
+    __lgbm: ModuleType | None = None
 
     def __init__(self, config: Config):
         super().__init__(ModelEnum.LIGHTGBM, config=config)
@@ -246,7 +246,7 @@ class LightGBMModel(Model):
         return regressor
 
 
-def get_all_models(config: Optional[Config] = None) -> list[Model]:
+def get_all_models(config: Config | None = None) -> list[Model]:
     """
     Get instances of all available model types.
 
@@ -265,7 +265,7 @@ def get_all_models(config: Optional[Config] = None) -> list[Model]:
     ]
 
 
-def get_model_by_name(model_name: str, config: Optional[Config] = None) -> Model:
+def get_model_by_name(model_name: str, config: Config | None = None) -> Model:
     """
     Get a specific model instance by name.
 

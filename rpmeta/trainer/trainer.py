@@ -2,7 +2,6 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -22,7 +21,7 @@ class ModelTrainingManager:
         self,
         data: pd.DataFrame,
         config: Config,
-        model_allowlist: Optional[set[ModelEnum]] = None,
+        model_allowlist: set[ModelEnum] | None = None,
     ) -> None:
         self.df = data
         self.config = config

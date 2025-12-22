@@ -1,7 +1,7 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import click
 
@@ -31,7 +31,7 @@ def _get_context_settings() -> dict[str, Any]:
     help="Path to config file",
 )
 @click.pass_context
-def entry_point(ctx: click.Context, log_level: str, config: Optional[Path]):
+def entry_point(ctx: click.Context, log_level: str, config: Path | None):
     """
     Predict build time duration of an RPM build based on available hardware resources.
     """

@@ -4,7 +4,6 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import click
 from click import DateTime
@@ -59,9 +58,9 @@ logger = logging.getLogger(__name__)
 @click.pass_context
 def fetch_data(
     ctx: click.Context,
-    path: Optional[Path],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
+    path: Path | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
     limit: int,
     copr: bool,
     is_copr_instance: bool,

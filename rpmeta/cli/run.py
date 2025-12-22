@@ -1,7 +1,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 import click
 import pandas as pd
@@ -72,7 +71,7 @@ def run(ctx: click.Context, model_dir: Path, model_name: ModelEnum, categories: 
     help="Enable debug mode",
 )
 @click.pass_context
-def serve(ctx: click.Context, host: Optional[str], port: Optional[int], debug: bool):
+def serve(ctx: click.Context, host: str | None, port: int | None, debug: bool):
     """
     Start the API server on specified host and port.
 

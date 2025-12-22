@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
@@ -89,7 +88,7 @@ class PredictionRequest(InputRecord):
     the necessary configurations.
     """
 
-    configuration: Optional[ModelBehavior] = Field(
+    configuration: ModelBehavior | None = Field(
         default=None,
         description="Optional configuration for the server or model",
     )

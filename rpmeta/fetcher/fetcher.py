@@ -4,7 +4,6 @@ import re
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional
 
 import koji
 import requests
@@ -40,8 +39,8 @@ class Fetcher(ABC):
     def __init__(
         self,
         config: Config,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 10000,
     ) -> None:
         self.config = config
@@ -76,8 +75,8 @@ class KojiFetcher(Fetcher):
     def __init__(
         self,
         config: Config,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 10000,
     ) -> None:
         super().__init__(config, start_date, end_date, limit)
@@ -88,7 +87,7 @@ class KojiFetcher(Fetcher):
         self._host_hw_info_map: dict[int, HwInfo] = {}
         self._current_page = 0
 
-    def _fetch_hw_info_from_koji(self, task_info: dict) -> Optional[HwInfo]:
+    def _fetch_hw_info_from_koji(self, task_info: dict) -> HwInfo | None:
         task_id = task_info["id"]
         logger.info("Fetching hw_info for task: %d", task_id)
         if task_info.get("host_id") and task_info["host_id"] in self._host_hw_info_map:
@@ -116,7 +115,7 @@ class KojiFetcher(Fetcher):
             logger.error("Failed to fetch hw_info for task: %d - %s", task_id, e)
             return None
 
-    def _get_chroot_from_release(self, release: str, arch: str) -> Optional[str]:
+    def _get_chroot_from_release(self, release: str, arch: str) -> str | None:
         match = None
         # searches for strings like "X.fcXX"
         regex_fc = re.search(r"\.fc(\d{2})", release)
@@ -140,7 +139,7 @@ class KojiFetcher(Fetcher):
         logger.error("Failed to parse chroot from release: %s", release)
         return None
 
-    def _fetch_dataset_record(self, build: dict, task_info: dict) -> Optional[Record]:
+    def _fetch_dataset_record(self, build: dict, task_info: dict) -> Record | None:
         hw_info = self._fetch_hw_info_from_koji(task_info)
         if not hw_info:
             return None
@@ -222,8 +221,8 @@ class CoprFetcher(Fetcher):
     def __init__(
         self,
         config: Config,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         is_copr_instance: bool = False,
         limit: int = 10000,
     ) -> None:
@@ -304,7 +303,7 @@ class CoprFetcher(Fetcher):
         mock_chroot: str,
         result_dir_url: str,
         build_duration: int,
-    ) -> Optional[Record]:
+    ) -> Record | None:
         try:
             url_to_hw_info = CoprFetcher._get_url_to_hw_info_log(result_dir_url)
             logger.debug("URL to hw_info: %s", url_to_hw_info)
@@ -347,7 +346,7 @@ class CoprFetcher(Fetcher):
         return epoch, version
 
     @staticmethod
-    def _fetch_hw_info_from_copr(url_to_hw_info: str) -> Optional[HwInfo]:
+    def _fetch_hw_info_from_copr(url_to_hw_info: str) -> HwInfo | None:
         try:
             response = requests.get(url_to_hw_info)
             response.raise_for_status()
@@ -390,7 +389,7 @@ class CoprFetcher(Fetcher):
                     build["id"],
                 )
 
-    def _get_records_from_project(self, project: dict) -> Optional[list[Record]]:
+    def _get_records_from_project(self, project: dict) -> list[Record] | None:
         builds = self.client.build_proxy.get_list(
             ownername=project["ownername"],
             projectname=project["name"],

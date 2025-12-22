@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from typing import Optional
 
 import click
 import pandas as pd
@@ -47,7 +46,7 @@ from rpmeta.trainer.visualizer import ResultsHandler
 def train(
     ctx: click.Context,
     dataset: Path,
-    result_dir: Optional[Path],
+    result_dir: Path | None,
     model_allowlist: set[ModelEnum],
 ):
     """

@@ -14,7 +14,7 @@ class Context:
     Context for the CLI commands.
     """
 
-    config: Optional[Config] = None
-    predictor: Optional[Predictor] = None
-    log_level: Optional[str] = None
+    config: Config | None = None
+    predictor: Predictor | None = None
+    log_level: str | None = None
     trainer: Optional["ModelTrainingManager"] = None
