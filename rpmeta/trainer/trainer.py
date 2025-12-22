@@ -37,7 +37,7 @@ class ModelTrainingManager:
         with category_dtypes_path.open("w") as f:
             json.dump(category_dtypes, f, indent=4)
 
-        logger.info(f"Saved category dtypes to {category_dtypes_path}")
+        logger.info("Saved category dtypes to %s", category_dtypes_path)
 
         self.X = self.df[ALL_FEATURES]
         self.y = self.df[TARGET]
@@ -54,7 +54,7 @@ class ModelTrainingManager:
             model_allowlist_str = {model.value for model in model_allowlist}
 
         self.model_allowlist = model_allowlist_str
-        logger.info(f"Model allowlist: {self.model_allowlist}")
+        logger.info("Model allowlist: %s", self.model_allowlist)
 
     def _get_filtered_models(self) -> list[ModelTrainer]:
         models = []
@@ -82,7 +82,7 @@ class ModelTrainingManager:
         return result
 
     @staticmethod
-    def _aggregate_group(group: pd.DataFrame) -> pd.DataFrame:
+    def _aggregate_group(group: pd.DataFrame) -> pd.Series:
         return pd.Series({TARGET: int(group[TARGET].mean())})
 
     def _preprocess_dataset(self) -> None:
@@ -102,20 +102,20 @@ class ModelTrainingManager:
         logger.info("Removing duplicates and NaN values")
         self.df.drop_duplicates(inplace=True, keep="first")
         self.df.dropna(inplace=True)
-        logger.info(f"Removed duplicates and NaN values, resulting in {len(self.df)} records.")
+        logger.info("Removed duplicates and NaN values, resulting in %d records.", len(self.df))
 
         logger.info("Removing duplicates and outliers")
         dupes = self.df[self.df.duplicated(subset=ALL_FEATURES, keep=False)].copy()
         not_dupes = self.df[~self.df.index.isin(dupes.index)]
 
-        logger.info(f"Found {len(dupes)} duplicates")
-        logger.info(f"Found {len(not_dupes)} non-duplicates")
+        logger.info("Found %d duplicates", len(dupes))
+        logger.info("Found %d non-duplicates", len(not_dupes))
 
         logger.info("Removing outliers using IQR method")
         filtered_dupes = dupes.groupby(ALL_FEATURES, group_keys=False).apply(
             self._remove_outliers_iqr,
         )
-        logger.info(f"Filtered {len(dupes) - len(filtered_dupes)} outliers from duplicates")
+        logger.info("Filtered %d outliers from duplicates", len(dupes) - len(filtered_dupes))
         self.df = pd.concat([filtered_dupes, not_dupes], ignore_index=True)
 
         # aggregate the target by mean
@@ -127,12 +127,12 @@ class ModelTrainingManager:
             .reset_index()
         )
 
-        logger.info(f"Aggregated target by mean, resulting in {len(self.df)} records.")
+        logger.info("Aggregated target by mean, resulting in %d records.", len(self.df))
         self.df[TARGET] = np.round(self.df[TARGET]).astype(int)
 
         self.df[TARGET] = self.df[TARGET].apply(np.ceil).astype(int)
         logger.info("Preprocessing completed")
-        logger.info(f"Preprocessed dataset, resulting in {len(self.df)} records.")
+        logger.info("Preprocessed dataset, resulting in %d records.", len(self.df))
 
     def _categorize_get_categories_mapping(self) -> dict[str, list[str]]:
         result = {}
@@ -140,7 +140,7 @@ class ModelTrainingManager:
             self.df[col] = self.df[col].astype("category")
             result[col] = self.df[col].cat.categories.tolist()
 
-        logger.info(f"Categorized columns: {list(result.keys())}")
+        logger.info("Categorized columns: %s", list(result.keys()))
         return result
 
     def run_all_studies(
@@ -163,7 +163,7 @@ class ModelTrainingManager:
         self.y_test = self.y_test[known_mask]
 
         for model in self._get_filtered_models():
-            logger.info(f"Training model: {model.name}")
+            logger.info("Training model: %s", model.name)
             study, trials, best = model.run_study(
                 self.X_train,
                 self.X_test,
@@ -175,7 +175,7 @@ class ModelTrainingManager:
             all_results[model.name] = trials
             best_models[model.name] = best
 
-            logger.info(f"Best model for {model.name}: {best.model_name}")
+            logger.info("Best model for %s: %s", model.name, best.model_name)
 
         logger.info("All models trained.")
         return all_results, best_models, studies
@@ -189,7 +189,7 @@ class ModelTrainingManager:
         """
         models = []
         for model in self._get_filtered_models():
-            logger.info(f"Starting training for model: {model.name}")
+            logger.info("Starting training for model: %s", model.name)
             models.append(model.run(self.X, self.y))
 
         logger.info("Training completed for all models.")

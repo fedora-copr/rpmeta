@@ -8,7 +8,7 @@ from sklearn.compose import TransformedTargetRegressor
 from rpmeta.config import Config, ModelBehavior
 from rpmeta.constants import ModelEnum, TimeFormat
 from rpmeta.dataset import InputRecord
-from rpmeta.model import Model, get_all_models
+from rpmeta.model import get_model_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +23,6 @@ class Predictor:
         self.model = model
         self.category_maps = category_maps
         self.config = config
-
-    @staticmethod
-    def _model_factory(model_name: ModelEnum) -> Model:
-        for model in get_all_models():
-            if model.name == model_name:
-                return model
-
-        raise ValueError(f"Model {model_name} is not supported.")
 
     @classmethod
     def load(
@@ -54,10 +46,11 @@ class Predictor:
         """
         logger.info("Loading model %s from %s", model_name, model_path)
 
-        model = cls._model_factory(model_name).load_regressor(model_path)
+        model_handler = get_model_by_name(model_name, config)
+        model = model_handler.load_regressor(model_path)
 
         logger.info("Loading category maps from %s", category_maps_path)
-        with open(category_maps_path) as f:
+        with open(category_maps_path, encoding="utf-8") as f:
             category_maps = json.load(f)
 
         return cls(model, category_maps, config)
@@ -71,23 +64,35 @@ class Predictor:
             behavior: The model behavior configuration
 
         Returns:
-            The prediction time in minutes by default
+            The prediction time in the configured time format (minutes by default),
+            or -1 if the package name is unknown.
         """
         if input_data.package_name not in self.category_maps["package_name"]:
             logger.error(
-                f"Package name {input_data.package_name} is not known. "
+                "Package name '%s' is not known. "
                 "Please retrain the model with the new package name.",
+                input_data.package_name,
             )
             return -1
 
         df = input_data.to_data_frame(self.category_maps)
         pred = self.model.predict(df)
-        minutes = int(pred[0].item())
+
+        # extract scalar value from prediction array
+        raw_prediction = pred[0]
+        if hasattr(raw_prediction, "item"):
+            minutes = int(raw_prediction.item())
+        else:
+            minutes = int(raw_prediction)
 
         if minutes <= 0:
             # this really shouldn't happen, since the model is trained on positive values
             # but you never know...
-            logger.error("Model prediction returned a negative value, which is invalid.")
+            logger.warning(
+                "Model prediction returned non-positive value (%d), clamping to 1. Data: %s",
+                minutes,
+                input_data.to_model_dict(),
+            )
             minutes = 1
 
         if behavior.time_format == TimeFormat.SECONDS:
@@ -97,7 +102,8 @@ class Predictor:
         if behavior.time_format == TimeFormat.HOURS:
             return math.ceil(minutes / 60)
 
-        logger.error(
-            f"Unknown time format {behavior.time_format}. Returning minutes as default.",
+        logger.warning(
+            "Unknown time format '%s'. Returning minutes as default.",
+            behavior.time_format,
         )
         return minutes
