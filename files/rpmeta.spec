@@ -4,10 +4,12 @@ It provides a set of commands for training a predictive model, making prediction
 and serving a REST API endpoint.
 }
 
+%global srcname rpmeta
+
 %if 0%{?git_build}
-%global pkg_name rpmeta-git
+%global pkg_name %{srcname}-git
 %else
-%global pkg_name rpmeta
+%global pkg_name %{srcname}
 %endif
 
 Name:           %pkg_name
@@ -16,9 +18,9 @@ Release:        %autorelease
 Summary:        Estimate duration of RPM package build
 
 License:        GPL-3.0-or-later
-URL:            https://github.com/fedora-copr/%{name}
-Source0:        %{url}/archive/refs/tags/%{name}-%{version}.tar.gz
-Source1:        95-rpmeta.preset
+URL:            https://github.com/fedora-copr/rpmeta
+Source0:        %{url}/archive/refs/tags/%{srcname}-%{version}.tar.gz
+Source1:        95-%{srcname}.preset
 
 BuildArch:      noarch
 
@@ -29,9 +31,9 @@ BuildRequires:  systemd-rpm-macros
 
 # prevent having both
 %if 0%{?git_build}
-Conflicts:      rpmeta
+Conflicts:      %{srcname}
 %else
-Conflicts:      rpmeta-git
+Conflicts:      %{srcname}-git
 %endif
 
 
@@ -96,24 +98,24 @@ sed -i '/kaleido==/d' pyproject.toml
 
 %install
 %pyproject_install
-%pyproject_save_files %{name}
+%pyproject_save_files %{srcname}
 
-install -D -m 644 -p files/config.toml.example %{buildroot}%{_sysconfdir}/%{name}/config.toml.example
+install -D -m 644 -p files/config.toml.example %{buildroot}%{_sysconfdir}/%{srcname}/config.toml.example
 install -D -m 644 -p files/rpmeta.service %{buildroot}%{_unitdir}/rpmeta.service
 install -D -m 644 -p files/rpmeta.env %{buildroot}%{_sysconfdir}/sysconfig/rpmeta
 
-install -D -m 644 %{S:1} %{buildroot}%{_presetdir}/95-%{name}.preset
+install -D -m 644 %{S:1} %{buildroot}%{_presetdir}/95-%{srcname}.preset
 
 # Create sysusers.d config file inline
 install -d %{buildroot}%{_sysusersdir}
-cat > %{buildroot}%{_sysusersdir}/%{name}.conf <<EOF
+cat > %{buildroot}%{_sysusersdir}/%{srcname}.conf <<EOF
 # Type  User    ID  GECOS                     Home dir
 u       rpmeta  -   "RPMeta Service Account"  /var/lib/rpmeta
 EOF
 
 # Create tmpfiles.d config file inline
 install -d %{buildroot}%{_tmpfilesdir}
-cat > %{buildroot}%{_tmpfilesdir}/%{name}.conf <<EOF
+cat > %{buildroot}%{_tmpfilesdir}/%{srcname}.conf <<EOF
 # Type  Path                      Mode  User    Group   Age  Argument
 d       /var/lib/rpmeta           0755  rpmeta  rpmeta  -    -
 d       /var/lib/rpmeta/models    0755  rpmeta  rpmeta  -    -
@@ -121,23 +123,23 @@ Z       /var/log/rpmeta.log       0644  rpmeta  rpmeta  -    -
 EOF
 
 # generate man 1 pages
-PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{name} --target %{buildroot}%{_mandir}/man1
+PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{srcname} --target %{buildroot}%{_mandir}/man1
 
 
 %files -f %{pyproject_files}
 %license LICENSE
 %doc README.md
-%{_mandir}/man1/%{name}*.1*
-%{_bindir}/%{name}
-%config(noreplace) %{_sysconfdir}/%{name}/config.toml.example
+%{_mandir}/man1/%{srcname}*.1*
+%{_bindir}/%{srcname}
+%config(noreplace) %{_sysconfdir}/%{srcname}/config.toml.example
 
 
 %files -n server
 %{python3_sitelib}/rpmeta/server/
 %{_unitdir}/rpmeta.service
-%{_sysusersdir}/%{name}.conf
-%{_tmpfilesdir}/%{name}.conf
-%{_presetdir}/95-%{name}.preset
+%{_sysusersdir}/%{srcname}.conf
+%{_tmpfilesdir}/%{srcname}.conf
+%{_presetdir}/95-%{srcname}.preset
 %config(noreplace) %{_sysconfdir}/sysconfig/rpmeta
 
 %post -n server
