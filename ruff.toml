@@ -48,7 +48,11 @@ select = [
     "RUF", # ruff special rules
     "G", # flake8-logging-format
 ]
-ignore = []
+ignore = [
+    # to ignore Optional[X] -> X | None
+    "UP007",
+    "UP045",
+]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]

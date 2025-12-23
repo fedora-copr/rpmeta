@@ -11,7 +11,7 @@ jobs:
     targets:
       - fedora-all
     owner: "@copr"
-    project: "rpmeta-git"
+    project: "rpmeta"
     branch: main
     list_on_homepage: True
     preserve_project: True

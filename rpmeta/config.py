@@ -1,8 +1,8 @@
 import logging
+import tomllib
 from pathlib import Path
 from typing import Any, Optional
 
-import tomllib
 from pydantic import BaseModel, Field, model_validator
 
 from rpmeta.constants import (
