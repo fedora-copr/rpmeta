@@ -119,8 +119,6 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{srcname} --target %{buil
 %config(noreplace) %{_sysconfdir}/%{srcname}/config.toml.example
 # This is not part of the main package, but of the subpackages
 %exclude %{python3_sitelib}/rpmeta/server/
-%exclude %{python3_sitelib}/rpmeta/trainer/
-%exclude %{python3_sitelib}/rpmeta/fetcher/
 
 
 %files -n %{name}+server
