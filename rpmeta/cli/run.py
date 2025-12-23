@@ -11,8 +11,6 @@ from rpmeta.cli.ctx import Context
 from rpmeta.constants import ALL_FEATURES, TARGET, ModelEnum
 from rpmeta.dataset import InputRecord
 from rpmeta.predictor import Predictor
-from rpmeta.trainer.base import BestModelResult
-from rpmeta.trainer.visualizer import ResultsHandler
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +201,9 @@ def visualize(ctx: click.Context, dataset: Path):
     This command will generate various plots and save them to the model directory.
     """
     from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
+
+    from rpmeta.trainer.base import BestModelResult
+    from rpmeta.trainer.visualizer import ResultsHandler
 
     predictor = ctx.obj.predictor
 
