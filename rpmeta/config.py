@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from rpmeta.constants import (
     CONFIG_LOCATIONS,
+    COPR_URL,
     KOJI_HUB_URL,
     RESULT_DIR_LOCATIONS,
     TimeFormat,
@@ -33,7 +34,7 @@ class Copr(BaseModel):
     """Copr client configuration"""
 
     api_url: str = Field(
-        default="https://copr.fedorainfracloud.org/api_3",
+        default=COPR_URL,
         description="Copr API URL",
     )
 

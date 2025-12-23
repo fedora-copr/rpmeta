@@ -5,6 +5,7 @@ from pathlib import Path
 # constants
 
 KOJI_HUB_URL = "https://koji.fedoraproject.org/kojihub"
+COPR_URL = "https://copr.fedorainfracloud.org"
 
 # divider for ram and swap values in the model
 # this is used to transform some of the variables to a more manageable scale

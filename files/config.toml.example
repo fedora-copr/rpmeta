@@ -22,7 +22,7 @@ hub_url = "https://koji.fedoraproject.org/kojihub" # Koji hub URL
 
 # Copr client configuration
 [copr]
-api_url = "https://copr.fedorainfracloud.org/api_3" # Copr API URL
+api_url = "https://copr.fedorainfracloud.org" # Copr API URL
 
 
 # Machine learning model configuration

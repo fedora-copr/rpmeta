@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from rpmeta.cli.ctx import Context
 from rpmeta.cli.main import entry_point
 from rpmeta.config import Api, Config, ConfigManager, Model
-from rpmeta.constants import KOJI_HUB_URL, RESULT_DIR_LOCATIONS
+from rpmeta.constants import COPR_URL, KOJI_HUB_URL, RESULT_DIR_LOCATIONS
 
 
 def test_default_config_creation():
@@ -22,7 +22,7 @@ def test_default_config_creation():
 
     assert config.koji.hub_url == KOJI_HUB_URL
 
-    assert config.copr.api_url == "https://copr.fedorainfracloud.org/api_3"
+    assert config.copr.api_url == COPR_URL
 
     assert config.model.random_state == 42
     assert config.model.n_jobs == -1
