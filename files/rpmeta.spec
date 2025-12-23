@@ -45,37 +45,22 @@ This is a development build from the main branch.
 %endif
 
 
-%package -n     server
-Summary:        RPMeta server module for serving REST API endpoint
-Requires:       %{name} = %{version}-%{release}
+# automatic creation of subpackages
+# xgboost nor any other boosting algorithm is packaged to fedora
+%pyproject_extras_subpkg -n %{name} trainer
+%pyproject_extras_subpkg -n %{name} fetcher
 
-%description -n server
+
+%package -n     %{name}+server
+Summary:        RPMeta server module for serving REST API endpoint
+Requires:       python3dist(fastapi)
+Requires:       python3dist(uvicorn)
+Requires:       %{name} = %{version}-%{release}
+%{?systemd_requires}
+
+%description -n %{name}+server
 This package provides the server module of RPMeta, including a REST API endpoint for making
 predictions. It includes a systemd service for running the RPMeta server as a background service.
-
-%pyproject_extras_subpkg -n %{name} server
-
-
-# xgboost nor any other boosting algorithm is packaged to fedora
-%package -n     trainer
-Summary:        RPMeta trainer module for predictive model training
-Requires:       %{name} = %{version}-%{release}
-
-%description -n trainer
-This package provides the training module of RPMeta, including data processing, data fetchin from
-Copr and Koji build systems, and model training.
-
-%pyproject_extras_subpkg -n %{name} trainer
-
-
-%package -n     fetcher
-Summary:        RPMeta fetcher module for data fetching
-Requires:       %{name} = %{version}-%{release}
-
-%description -n fetcher
-This package provides the fetcher module of RPMeta, including data fetching from Copr and Koji.
-
-%pyproject_extras_subpkg -n %{name} fetcher
 
 
 %prep
@@ -132,9 +117,13 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{srcname} --target %{buil
 %{_mandir}/man1/%{srcname}*.1*
 %{_bindir}/%{srcname}
 %config(noreplace) %{_sysconfdir}/%{srcname}/config.toml.example
+# This is not part of the main package, but of the subpackages
+%exclude %{python3_sitelib}/rpmeta/server/
+%exclude %{python3_sitelib}/rpmeta/trainer/
+%exclude %{python3_sitelib}/rpmeta/fetcher/
 
 
-%files -n server
+%files -n %{name}+server
 %{python3_sitelib}/rpmeta/server/
 %{_unitdir}/rpmeta.service
 %{_sysusersdir}/%{srcname}.conf
@@ -142,22 +131,15 @@ PYTHONPATH="%{buildroot}%{python3_sitelib}" click-man %{srcname} --target %{buil
 %{_presetdir}/95-%{srcname}.preset
 %config(noreplace) %{_sysconfdir}/sysconfig/rpmeta
 
-%post -n server
+
+%post -n %{name}+server
 %systemd_post rpmeta.service
 
-%preun -n server
+%preun -n %{name}+server
 %systemd_preun rpmeta.service
 
-%postun -n server
+%postun -n %{name}+server
 %systemd_postun_with_restart rpmeta.service
-
-
-%files -n trainer
-%{python3_sitelib}/rpmeta/trainer/
-
-
-%files -n fetcher
-%{python3_sitelib}/rpmeta/fetcher/
 
 
 %changelog
