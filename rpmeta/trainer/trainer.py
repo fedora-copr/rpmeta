@@ -10,7 +10,7 @@ from optuna import Study
 from sklearn.model_selection import train_test_split
 
 from rpmeta.config import Config
-from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, DIVIDER, TARGET, ModelEnum
+from rpmeta.constants import ALL_FEATURES, CATEGORICAL_FEATURES, TARGET, ModelEnum
 from rpmeta.trainer.base import BestModelResult, ModelTrainer, TrialResult
 from rpmeta.trainer.models import get_all_model_trainers
 
@@ -91,12 +91,8 @@ class ModelTrainingManager:
         self.df["version"] = self.df["version"].str.replace(r"[\^~].*", "", regex=True)
         self.df[TARGET] = self.df[TARGET].astype(int)  # this has to be in minutes
 
-        self.df["hw_info.ram"] = np.round(
-            self.df["hw_info.ram"] / DIVIDER,
-        ).astype(int)
-        self.df["hw_info.swap"] = np.round(
-            self.df["hw_info.swap"] / DIVIDER,
-        ).astype(int)
+        self.df["hw_info.ram"] = self.df["hw_info.ram"].astype("float32")
+        self.df["hw_info.swap"] = self.df["hw_info.swap"].astype("float32")
         self.df = self.df[(self.df[TARGET] >= 0) & (self.df[TARGET] <= 1917)]
 
         logger.info("Removing duplicates and NaN values")

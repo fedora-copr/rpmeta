@@ -1,11 +1,10 @@
 import logging
 from typing import Any, Optional
 
-import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from rpmeta.constants import ALL_FEATURES, DIVIDER
+from rpmeta.constants import ALL_FEATURES
 from rpmeta.helpers import to_minutes_rounded
 
 logger = logging.getLogger(__name__)
@@ -35,12 +34,12 @@ class HwInfo(BaseModel):
         description="Number of CPU cores",
         gt=0,
     )
-    ram: int = Field(
-        description="Total RAM in KB",
+    ram: float = Field(
+        description="Total RAM in Gi (gibibytes)",
         gt=0,
     )
-    swap: int = Field(
-        description="Total swap space in KB",
+    swap: float = Field(
+        description="Total swap space in Gi (gibibytes)",
         ge=0,
     )
 
@@ -48,10 +47,49 @@ class HwInfo(BaseModel):
         validate_assignment=True,
     )
 
+    @staticmethod
+    def _convert_human_readable_to_gi(value: str) -> float:
+        """
+        Convert human-readable memory units to Gi (gibibytes).
+
+        Supports the following units:
+        - B (bytes)
+        - Ki (kibibyte)
+        - Mi (mebibyte)
+        - Gi (gibibyte)
+        - Ti (tebibyte)
+        - Pi (pebibyte)
+
+        Args:
+            value: Memory value with unit (e.g., '54Gi', '154Mi') or plain number
+             in KB (/bin/free default)
+
+        Returns:
+            Memory value in Gi (gibibytes)
+        """
+        value = value.strip().replace(",", ".")
+
+        unit_to_gi = {
+            "B": 1 / (1024**3),
+            "Ki": 1 / (1024**2),
+            "Mi": 1 / 1024,
+            "Gi": 1,
+            "Ti": 1024,
+            "Pi": 1024 * 1024,
+        }
+
+        for unit, factor in unit_to_gi.items():
+            if value.endswith(unit):
+                numeric_value = float(value.rstrip(unit))
+                return round(numeric_value * factor, 1)
+
+        # If no unit found, assume it's in KB (/bin/free default behavior)
+        return round(float(value) / (1024**2), 1)
+
     @classmethod
     def parse_from_lscpu(cls, content: str) -> "HwInfo":
         logger.debug("lscpu output: %s", content)
-        hw_info: dict[str, int | str] = {}
+        hw_info: dict[str, float | int | str] = {}
         for line in content.splitlines():
             if line.startswith("Model name:"):
                 hw_info["cpu_model_name"] = line.split(":")[1].strip()
@@ -62,9 +100,9 @@ class HwInfo(BaseModel):
             elif line.startswith("CPU(s):"):
                 hw_info["cpu_cores"] = int(line.split(":")[1].strip())
             elif line.startswith("Mem:"):
-                hw_info["ram"] = int(line.split()[1])
+                hw_info["ram"] = cls._convert_human_readable_to_gi(line.split()[1])
             elif line.startswith("Swap:"):
-                hw_info["swap"] = int(line.split()[1])
+                hw_info["swap"] = cls._convert_human_readable_to_gi(line.split()[1])
 
         if hw_info.get("cpu_model") is None:
             hw_info["cpu_model"] = "unknown"
@@ -101,8 +139,8 @@ class InputRecord(BaseModel):
         "cpu_arch": "x86_64",
         "cpu_model": "85",
         "cpu_cores": 6,
-        "ram": 15324520,
-        "swap": 8388604
+        "ram": 14.6,
+        "swap": 8.0
       }
     }
     ```
@@ -186,8 +224,8 @@ class InputRecord(BaseModel):
             dtype = pd.CategoricalDtype(categories=cat_list, ordered=False)
             df[col] = df[col].astype(dtype)
 
-        df["hw_info.ram"] = np.round(df["hw_info.ram"] / DIVIDER).astype(int)
-        df["hw_info.swap"] = np.round(df["hw_info.swap"] / DIVIDER).astype(int)
+        df["hw_info.ram"] = df["hw_info.ram"].astype("float32")
+        df["hw_info.swap"] = df["hw_info.swap"].astype("float32")
 
         # ensure all features are in the expected order for the model
         return df[ALL_FEATURES]
