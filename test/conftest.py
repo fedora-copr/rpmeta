@@ -120,8 +120,8 @@ def hw_info():
         cpu_cores=4,
         cpu_model="12",
         cpu_model_name="silny procak",
-        ram=16000000,
-        swap=8000000,
+        ram=15.3,
+        swap=7.6,
     )
 
 

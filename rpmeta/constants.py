@@ -7,10 +7,6 @@ from pathlib import Path
 KOJI_HUB_URL = "https://koji.fedoraproject.org/kojihub"
 COPR_URL = "https://copr.fedorainfracloud.org"
 
-# divider for ram and swap values in the model
-# this is used to transform some of the variables to a more manageable scale
-DIVIDER = 100000
-
 # DO NOT TOUCH THE ORDER of these features, it is important for the model
 # If you are changing the order, you need to retrain the model
 # ideally with optuna to fine tune the parameters once more
