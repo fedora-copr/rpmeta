@@ -95,6 +95,26 @@ class PredictionRequest(InputRecord):
     )
 
 
+class HealthResponse(BaseModel):
+    """
+    Response model for the health check endpoint.
+    """
+
+    status: str = Field(
+        ...,
+        description="Current status of the service",
+        examples=["healthy"],
+    )
+    version: str = Field(
+        ...,
+        description="Version of the API",
+    )
+    model_name: str = Field(
+        ...,
+        description="Name of the currently loaded machine learning model",
+    )
+
+
 # API router for v1 endpoints
 v1_router = APIRouter(prefix="/v1")
 
@@ -189,3 +209,24 @@ def reload_predictor(new_predictor: Predictor) -> None:
     logger.info("Reloading predictor")
     predictor = new_predictor
     logger.info("Predictor loaded successfully")
+
+
+@app.get("/health")
+def health_check() -> HealthResponse:
+    """
+    Perform a health check on the API.
+
+    Returns the status, API version, and the name of the loaded model.
+    If the model is not loaded, returns 503 Service Unavailable.
+    """
+    if predictor is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model not loaded. Server not ready for predictions.",
+        )
+
+    return HealthResponse(
+        status="healthy",
+        version=__version__,
+        model_name=predictor.config.model.name,
+    )
