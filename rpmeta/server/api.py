@@ -139,6 +139,13 @@ def predict_endpoint_v1(request_data: PredictionRequest) -> PredictionResponse:
         prediction,
         model_behavior.time_format,
     )
+
+    if prediction == -1:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Package '{package_data.package_name}' is not known for the model.",
+        )
+
     return PredictionResponse(
         prediction=prediction,
         used_configuration=model_behavior,
