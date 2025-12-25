@@ -169,6 +169,9 @@ def base_model_subclass():
 
             return mock_regressor
 
+        def get_native_model_extension(self):
+            return "joblib"
+
         def save_model(self, regressor, path):
             joblib.dump(regressor, path)
 

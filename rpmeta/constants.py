@@ -68,3 +68,8 @@ class TimeFormat(StrEnum):
 class ModelStorageBaseNames(StrEnum):
     NATIVE_MODEL = "native_model"
     SKELETON_NAME = "model_skeleton"
+
+
+class ModelFileExtensions(StrEnum):
+    LIGHTGBM = "txt"
+    XGBOOST = "ubj"

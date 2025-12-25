@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.compose import TransformedTargetRegressor
 
 from rpmeta.config import Config
-from rpmeta.constants import ModelEnum, ModelStorageBaseNames
+from rpmeta.constants import ModelEnum, ModelFileExtensions, ModelStorageBaseNames
 
 if TYPE_CHECKING:
     from lightgbm import LGBMRegressor
@@ -49,6 +49,16 @@ class Model(ABC):
         ...
 
     @abstractmethod
+    def get_native_model_extension(self) -> str:
+        """
+        Get the file extension for the native model file.
+
+        Returns:
+            File extension (e.g., 'txt', 'ubj')
+        """
+        ...
+
+    @abstractmethod
     def save_model(self, regressor: Any, path: Path) -> None:
         """
         Save the model natively with provided library (lightgbm, xgboost, etc.) to the given path
@@ -72,6 +82,16 @@ class Model(ABC):
         """
         ...
 
+    @property
+    def native_model_filename(self) -> str:
+        """
+        Get the filename for the native model file.
+
+        Returns:
+            Filename for the native model
+        """
+        return f"{ModelStorageBaseNames.NATIVE_MODEL}.{self.get_native_model_extension()}"
+
     def save_regressor(self, regressor: TransformedTargetRegressor, path: Path) -> None:
         """
         Save the whole regressor to the specified path, including model and transformer.
@@ -87,7 +107,7 @@ class Model(ABC):
         if not path.is_dir():
             raise ValueError(f"Provided path {path} is not a directory.")
 
-        native_model_path = path / ModelStorageBaseNames.NATIVE_MODEL
+        native_model_path = path / self.native_model_filename
         self.save_model(regressor.regressor_, native_model_path)
         logger.debug("Saved native model for '%s' to %s", self.name, native_model_path)
 
@@ -115,7 +135,7 @@ class Model(ABC):
         Returns:
             The loaded TransformedTargetRegressor
         """
-        native_model_path = path / ModelStorageBaseNames.NATIVE_MODEL
+        native_model_path = path / self.native_model_filename
         if not native_model_path.exists():
             raise FileNotFoundError(f"Native model file {native_model_path} does not exist.")
 
@@ -171,6 +191,9 @@ class XGBoostModel(Model):
             **params,
         )
 
+    def get_native_model_extension(self) -> str:
+        return ModelFileExtensions.XGBOOST
+
     def save_model(self, regressor: "XGBRegressor", path: Path) -> None:
         regressor.save_model(path)
 
@@ -219,6 +242,9 @@ class LightGBMModel(Model):
             early_stopping_rounds=early_stopping_rounds,
             **params,
         )
+
+    def get_native_model_extension(self) -> str:
+        return ModelFileExtensions.LIGHTGBM
 
     def save_model(self, regressor: "LGBMRegressor", path: Path) -> None:
         regressor.booster_.save_model(str(path))
