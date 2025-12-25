@@ -7,8 +7,9 @@ After=network.target
 Type=simple
 User=rpmeta
 Group=rpmeta
+Environment="PYTHONPATH=/var/lib/rpmeta/pylibs:$PYTHONPATH"
 EnvironmentFile=-/etc/sysconfig/rpmeta
-ExecStart=/usr/bin/rpmeta run --model-dir=${MODEL_DIR} --model-name=${MODEL_NAME} --categories=${CATEGORIES} --config=${CONFIG} serve ${EXTRA_OPTS}
+ExecStart=/usr/bin/rpmeta --config=${CONFIG} run --model-dir=${MODEL_DIR} --model-name=${MODEL_NAME} --categories=${CATEGORIES} serve ${EXTRA_OPTS}
 
 # Security hardening
 PrivateTmp=true

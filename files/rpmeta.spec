@@ -104,6 +104,7 @@ cat > %{buildroot}%{_tmpfilesdir}/%{srcname}.conf <<EOF
 # Type  Path                      Mode  User    Group   Age  Argument
 d       /var/lib/rpmeta           2775  rpmeta  rpmeta  -    -
 d       /var/lib/rpmeta/models    2775  rpmeta  rpmeta  -    -
+d       /var/lib/rpmeta/pylibs    2775  rpmeta  rpmeta  -    -
 f       /var/log/rpmeta.log       0644  rpmeta  rpmeta  -    -
 EOF
 
