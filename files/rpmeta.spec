@@ -102,8 +102,8 @@ EOF
 install -d %{buildroot}%{_tmpfilesdir}
 cat > %{buildroot}%{_tmpfilesdir}/%{srcname}.conf <<EOF
 # Type  Path                      Mode  User    Group   Age  Argument
-d       /var/lib/rpmeta           0755  rpmeta  rpmeta  -    -
-d       /var/lib/rpmeta/models    0755  rpmeta  rpmeta  -    -
+d       /var/lib/rpmeta           2775  rpmeta  rpmeta  -    -
+d       /var/lib/rpmeta/models    2775  rpmeta  rpmeta  -    -
 Z       /var/log/rpmeta.log       0644  rpmeta  rpmeta  -    -
 EOF
 
