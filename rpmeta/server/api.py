@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
@@ -100,10 +100,10 @@ class HealthResponse(BaseModel):
     Response model for the health check endpoint.
     """
 
-    status: str = Field(
+    status: Literal["healthy"] = Field(
         ...,
-        description="Current status of the service",
-        examples=["healthy"],
+        description="Health status of the API",
+        default="healthy",
     )
     version: str = Field(
         ...,
@@ -121,13 +121,7 @@ v1_router = APIRouter(prefix="/v1")
 
 @v1_router.post(
     "/predict",
-    response_model=PredictionResponse,
-    status_code=status.HTTP_200_OK,
     summary="Predict build duration",
-    description=(
-        "Predicts the build duration for an RPM package based on hardware information"
-        " and package metadata."
-    ),
 )
 def predict_endpoint_v1(request_data: PredictionRequest) -> PredictionResponse:
     """
@@ -178,13 +172,7 @@ app.include_router(v1_router)
 # Add an alias endpoint at the root path that redirects to the latest version (currently v1)
 @app.post(
     "/predict",
-    response_model=PredictionResponse,
-    status_code=status.HTTP_200_OK,
     summary="Predict build duration (Latest API version)",
-    description=(
-        "Alias to the latest API version (currently v1). Predicts the build duration for "
-        "an RPM package based on hardware information and package metadata."
-    ),
 )
 def predict_endpoint(request_data: PredictionRequest) -> PredictionResponse:
     """
@@ -211,13 +199,10 @@ def reload_predictor(new_predictor: Predictor) -> None:
     logger.info("Predictor loaded successfully")
 
 
-@app.get("/health")
+@app.get("/health", summary="Simple health check")
 def health_check() -> HealthResponse:
     """
-    Perform a health check on the API.
-
-    Returns the status, API version, and the name of the loaded model.
-    If the model is not loaded, returns 503 Service Unavailable.
+    Perform a health check on the API. If the model is not loaded, returns 503 Service Unavailable.
     """
     if predictor is None:
         raise HTTPException(
@@ -226,7 +211,6 @@ def health_check() -> HealthResponse:
         )
 
     return HealthResponse(
-        status="healthy",
         version=__version__,
         model_name=predictor.config.model.name,
     )
