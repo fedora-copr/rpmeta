@@ -65,9 +65,13 @@ class XGBoostParams(ModelParams):
         default=0.2415,
         description="Step size shrinkage used to prevent overfitting",
     )
-    max_depth: int = Field(
-        default=5,
-        description="Maximum depth of a tree",
+    max_bin: int = Field(
+        default=256,
+        description="Max number of bins that feature values will be bucketed in",
+    )
+    max_leaves: int = Field(
+        default=64,
+        description="Maximum tree leaves for base learners",
     )
     subsample: float = Field(
         default=0.5693,
@@ -97,6 +101,14 @@ class XGBoostParams(ModelParams):
         default=None,
         description="Number of rounds for early stopping",
         examples=[10, 20, 50],
+    )
+    size_penalty_enabled: bool = Field(
+        default=True,
+        description="Enable penalization of model size in Optuna objective for XGBoost.",
+    )
+    size_penalty_lambda: float = Field(
+        default=1,
+        description="How much cost 100k of nodes (added penalty).",
     )
 
 
@@ -147,6 +159,14 @@ class LightGBMParams(ModelParams):
         default=None,
         description="Number of rounds for early stopping",
         examples=[10, 20, 50],
+    )
+    size_penalty_enabled: bool = Field(
+        default=True,
+        description="Enable penalization of model size in Optuna objective for LightGBM.",
+    )
+    size_penalty_lambda: float = Field(
+        default=1,
+        description="How much cost 100k of nodes (added penalty).",
     )
 
 

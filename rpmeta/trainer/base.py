@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -90,7 +91,10 @@ class ModelTrainer(Model):
             trial.set_user_attr("fit_time", fit_time)
 
             y_pred = pipeline.predict(X_test)
-            return root_mean_squared_error(y_test, y_pred)
+            return root_mean_squared_error(y_test, y_pred) + self.compute_size_penalty(
+                pipeline,
+                trial,
+            )
 
         study = optuna.create_study(
             direction="minimize",
@@ -116,6 +120,9 @@ class ModelTrainer(Model):
 
         best_regressor.fit(X_train, y_train)
         y_pred = best_regressor.predict(X_test)
+
+        model_size = sys.getsizeof(best_regressor) / (1024 * 1024)
+        logger.info("Model size is %.2f MB", model_size)
 
         self.save_regressor(best_regressor, self._model_directory)
 
@@ -149,6 +156,9 @@ class ModelTrainer(Model):
         logger.info("Fitting model %s with default parameters: %s", self.name, self.default_params)
         regressor.fit(X, y)
         logger.debug("Model fitting complete.")
+
+        model_size = sys.getsizeof(regressor) / (1024 * 1024)
+        logger.info("Model size is %.2f MB", model_size)
 
         self.save_regressor(regressor, self._model_directory)
         return self._model_directory

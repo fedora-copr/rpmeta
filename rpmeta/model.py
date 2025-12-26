@@ -82,6 +82,20 @@ class Model(ABC):
         """
         ...
 
+    @abstractmethod
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        """
+        Compute the size penalty for the model.
+
+        Args:
+            regressor: The fitted regressor (may be a pipeline/wrapper)
+            trial: Optional Optuna trial for logging extra info
+
+        Returns:
+            Penalty value (float, 0 if not enabled)
+        """
+        ...
+
     @property
     def native_model_filename(self) -> str:
         """
@@ -184,6 +198,8 @@ class XGBoostModel(Model):
         return self._regressor(
             enable_categorical=True,
             tree_method="hist",
+            max_depth=0,
+            grow_policy="lossguide",
             n_jobs=self.config.model.n_jobs,
             random_state=self.config.model.random_state,
             objective="reg:squarederror",
@@ -203,6 +219,21 @@ class XGBoostModel(Model):
         params = regressor.get_xgb_params()
         logger.debug("Loaded XGBoost model with booster params: %s", params)
         return regressor
+
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        if not self.config.model.xgboost.size_penalty_enabled:
+            return 0.0
+
+        booster = regressor.regressor_.get_booster()
+        n_nodes = booster.trees_to_dataframe().shape[0]
+        penalty = self.config.model.xgboost.size_penalty_lambda * (n_nodes / 100000)
+
+        if trial is not None:
+            trial.set_user_attr("n_nodes", n_nodes)
+            trial.set_user_attr("size_penalty", penalty)
+            logger.debug("XGBoost model size penalty details - n_nodes: %d, penalty: %.6f", n_nodes, penalty)
+
+        return penalty
 
 
 class LightGBMModel(Model):
@@ -270,6 +301,21 @@ class LightGBMModel(Model):
             regressor._objective,
         )
         return regressor
+
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        if not self.config.model.lightgbm.size_penalty_enabled:
+            return 0.0
+
+        booster = regressor.regressor_.booster_
+        n_leaves = booster.num_leaves()
+        penalty = self.config.model.lightgbm.size_penalty_lambda * (n_leaves / 100000)
+
+        if trial is not None:
+            trial.set_user_attr("n_leaves", n_leaves)
+            trial.set_user_attr("size_penalty", penalty)
+            logger.debug("LightGBM model size penalty details - n_leaves: %d, penalty: %.6f", n_leaves, penalty)
+
+        return penalty
 
 
 def get_all_models(config: Optional[Config] = None) -> list[Model]:

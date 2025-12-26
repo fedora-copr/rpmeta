@@ -1,5 +1,7 @@
+import code
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -252,3 +254,31 @@ def visualize(ctx: click.Context, dataset: Path):
     result_handler.plot_predictions()
     result_handler.plot_distribution()
     result_handler.save_best_json()
+
+
+@run.command("shell")
+@click.pass_context
+def shell(ctx: click.Context):
+    """
+    Start interactive Python shell with the model loaded.
+    """
+    predictor = ctx.obj.predictor
+    config = ctx.obj.config
+
+    local_vars = {
+        "ctx": ctx,
+        "predictor": predictor,
+        "config": config,
+        "InputRecord": InputRecord,
+        "pd": pd,
+    }
+
+    var_list = "\n".join(f" - {name}: {var!s}" for name, var in local_vars.items())
+    banner = (
+        "Interactive RPMeta Shell\n"
+        f"Python {sys.version}\n"
+        "The following variables are available:\n"
+        f"{var_list}"
+    )
+
+    code.interact(banner=banner, local=local_vars)
