@@ -103,7 +103,6 @@ class HealthResponse(BaseModel):
     """
 
     status: Literal["healthy"] = Field(
-        ...,
         description="Health status of the API",
         default="healthy",
     )
