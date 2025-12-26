@@ -1,11 +1,13 @@
 import logging
 from typing import Literal, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException, status
+from fastapi import APIRouter, FastAPI, HTTPException, Response, status
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from rpmeta import __version__
 from rpmeta.config import ModelBehavior
+from rpmeta.constants import FAVICON_PATH
 from rpmeta.dataset import InputRecord
 from rpmeta.predictor import Predictor
 
@@ -214,3 +216,16 @@ def health_check() -> HealthResponse:
         version=__version__,
         model_name=predictor.config.model.name,
     )
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    if FAVICON_PATH.exists():
+        return FileResponse(FAVICON_PATH)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

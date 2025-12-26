@@ -41,6 +41,9 @@ CONFIG_LOCATIONS = [
     Path("/etc/rpmeta"),
 ]
 
+STATIC_DIR = Path(__file__).parent / "server" / "static"
+FAVICON_PATH = STATIC_DIR / "favicon.ico"
+
 # enums
 
 
