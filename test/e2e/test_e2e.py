@@ -48,6 +48,10 @@ def test_predict(model_and_types):
 
 def test_api_server(api_server):
     response = requests.post("http://localhost:9876")
+    assert response.status_code == 405
+    assert "Method Not Allowed" in response.text
+
+    response = requests.post("http://localhost:9876/nonexistent")
     assert response.status_code == 404
     assert "Not Found" in response.text
 

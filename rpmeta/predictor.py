@@ -19,10 +19,12 @@ class Predictor:
         model: TransformedTargetRegressor,
         category_maps: dict[str, list[str]],
         config: Config,
+        model_name: str,
     ) -> None:
         self.model = model
         self.category_maps = category_maps
         self.config = config
+        self.model_name = model_name
 
     @classmethod
     def load(
@@ -53,7 +55,7 @@ class Predictor:
         with open(category_maps_path, encoding="utf-8") as f:
             category_maps = json.load(f)
 
-        return cls(model, category_maps, config)
+        return cls(model, category_maps, config, model_name)
 
     def predict(self, input_data: InputRecord, behavior: ModelBehavior) -> int:
         """
