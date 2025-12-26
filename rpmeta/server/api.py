@@ -1,4 +1,5 @@
 import logging
+from textwrap import dedent
 from typing import Literal, Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException, Response, status
@@ -15,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="RPMeta API",
-    description="""
+    description=dedent(
+        """
     API for predicting build times for RPM packages based on hardware information
     and package metadata.
 
@@ -55,6 +57,7 @@ app = FastAPI(
 
     The prediction is the estimated build time in minutes by default.
     """,
+    ),
     version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
