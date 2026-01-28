@@ -216,7 +216,7 @@ def health_check() -> HealthResponse:
 
     return HealthResponse(
         version=__version__,
-        model_name=predictor.model_name,
+        model_name=predictor.model.name,
     )
 
 

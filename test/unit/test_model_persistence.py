@@ -49,9 +49,9 @@ class TestModelPersistence:
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
 
-        loaded_regressor = model.load_regressor(save_path)
+        model.load_regressor(save_path)
 
-        predictions_after = loaded_regressor.predict(X)
+        predictions_after = model.regressor.predict(X)
 
         np.testing.assert_allclose(
             predictions_before,
@@ -73,9 +73,9 @@ class TestModelPersistence:
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
 
-        loaded_regressor = model.load_regressor(save_path)
+        model.load_regressor(save_path)
 
-        predictions_after = loaded_regressor.predict(X)
+        predictions_after = model.regressor.predict(X)
 
         np.testing.assert_allclose(
             predictions_before,
@@ -105,9 +105,9 @@ class TestModelPersistence:
         model.save_regressor(regressor, save_path)
 
         fresh_model = get_model_by_name(model_name, config)
-        loaded_regressor = fresh_model.load_regressor(save_path)
+        fresh_model.load_regressor(save_path)
 
-        predictions_after = loaded_regressor.predict(X)
+        predictions_after = fresh_model.regressor.predict(X)
 
         np.testing.assert_allclose(
             predictions_before,
@@ -126,14 +126,16 @@ class TestModelPersistence:
 
         original_predictions = regressor.predict(X)
 
-        current_regressor = regressor
         for i in range(3):
             save_path = tmp_path / f"{model_name}_cycle_{i}"
             save_path.mkdir()
-            model.save_regressor(current_regressor, save_path)
-            current_regressor = model.load_regressor(save_path)
+            model.save_regressor(
+                model.regressor if model._loaded_regressor else regressor,
+                save_path,
+            )
+            model.load_regressor(save_path)
 
-        final_predictions = current_regressor.predict(X)
+        final_predictions = model.regressor.predict(X)
 
         np.testing.assert_allclose(
             original_predictions,
@@ -156,16 +158,16 @@ class TestModelPersistence:
         save_path = tmp_path / f"{model_name}_transformer"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
-        loaded_regressor = model.load_regressor(save_path)
+        model.load_regressor(save_path)
 
-        assert loaded_regressor.func is not None, "func (log1p) should be preserved after load"
-        assert loaded_regressor.inverse_func is not None, (
+        assert model.regressor.func is not None, "func (log1p) should be preserved after load"
+        assert model.regressor.inverse_func is not None, (
             "inverse_func (expm1) should be preserved after load"
         )
 
         test_value = np.array([100.0])
         original_transformed = regressor.func(test_value)
-        loaded_transformed = loaded_regressor.func(test_value)
+        loaded_transformed = model.regressor.func(test_value)
         np.testing.assert_array_equal(original_transformed, loaded_transformed)
 
     @pytest.mark.parametrize("model_name", ["lightgbm", "xgboost"])
@@ -181,9 +183,9 @@ class TestModelPersistence:
         save_path = tmp_path / f"{model_name}_shape"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
-        loaded_regressor = model.load_regressor(save_path)
+        model.load_regressor(save_path)
 
-        predictions_after = loaded_regressor.predict(X)
+        predictions_after = model.regressor.predict(X)
 
         assert predictions_before.shape == predictions_after.shape, (
             f"Prediction shape changed: {predictions_before.shape} -> {predictions_after.shape}"
@@ -203,13 +205,70 @@ class TestModelPersistence:
         save_path = tmp_path / f"{model_name}_single"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
-        loaded_regressor = model.load_regressor(save_path)
+        model.load_regressor(save_path)
 
-        prediction_after = loaded_regressor.predict(single_sample)
+        prediction_after = model.regressor.predict(single_sample)
 
         np.testing.assert_allclose(
             prediction_before,
             prediction_after,
             rtol=1e-5,
             err_msg=f"{model_name} single sample prediction differs after save/load!",
+        )
+
+    def test_xgboost_optimized_predict_matches_standard(self, test_data, config, tmp_path):
+        """
+        Test that XGBoost's optimized predict gives the same results as standard sklearn predict.
+
+        This tests the fix for issue #45 where standard predict was inefficient
+        due to DMatrix creation overhead.
+        """
+        X, y = test_data
+        model = XGBoostModel(config)
+
+        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, y)
+
+        # save and load to test with a typical inference scenario
+        save_path = tmp_path / "xgboost_optimized"
+        save_path.mkdir()
+        model.save_regressor(regressor, save_path)
+        model.load_regressor(save_path)
+
+        # compare standard sklearn predict vs optimized predict
+        standard_predictions = model.regressor.predict(X)
+        optimized_predictions = model.predict(X)
+
+        np.testing.assert_allclose(
+            standard_predictions,
+            optimized_predictions,
+            rtol=1e-5,
+            err_msg="XGBoost optimized predict gives different results than standard predict!",
+        )
+
+    def test_xgboost_optimized_predict_single_sample(self, test_data, config, tmp_path):
+        """
+        Test that XGBoost's optimized predict works correctly for single sample prediction.
+        """
+        X, y = test_data
+        model = XGBoostModel(config)
+
+        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, y)
+
+        save_path = tmp_path / "xgboost_optimized_single"
+        save_path.mkdir()
+        model.save_regressor(regressor, save_path)
+        model.load_regressor(save_path)
+
+        single_sample = X.iloc[[0]]
+
+        standard_prediction = model.regressor.predict(single_sample)
+        optimized_prediction = model.predict(single_sample)
+
+        np.testing.assert_allclose(
+            standard_prediction,
+            optimized_prediction,
+            rtol=1e-5,
+            err_msg="XGBoost optimized predict single sample differs from standard predict!",
         )
