@@ -50,7 +50,7 @@ min_child_weight = 1.101 # Minimum sum of instance weight needed in a child
 gamma = 1.904 # Minimum loss reduction required to make a further partition on a leaf node
 early_stopping_rounds = 10 # Number of rounds for early stopping
 size_penalty_enabled = true # Enable penalization of model size in Optuna objective for XGBoost.
-size_penalty_lambda = 0.1 # Strength of model size penalty for XGBoost (0 = no penalty).
+size_penalty_lambda = 1 # How much cost 100k of nodes (added penalty).
 [model.xgboost.params] # Optional model parameters
 objective = "reg:squarederror"
 tree_method = "hist"
@@ -69,7 +69,7 @@ lambda_l2 = 0.0001 # L2 regularization term on weights
 max_bin = 282 # Max number of bins that feature values will be bucketed in
 early_stopping_rounds = 10 # Number of rounds for early stopping
 size_penalty_enabled = true # Enable penalization of model size in Optuna objective for LightGBM.
-size_penalty_lambda = 0.1 # Strength of model size penalty for LightGBM (0 = no penalty).
+size_penalty_lambda = 1 # How much cost 100k of nodes (added penalty).
 [model.lightgbm.params] # Optional model parameters
 objective = "reg:squarederror"
 tree_method = "hist"
