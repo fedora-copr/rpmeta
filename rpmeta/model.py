@@ -265,7 +265,7 @@ class XGBoostModel(Model):
         raw_pred = booster.inplace_predict(data)
         # lost the inverse transformation here because of the inplace_predict :(
         # https://xgboost.readthedocs.io/en/stable/prediction.html#in-place-prediction
-        return np.expm1(raw_pred)
+        return self.regressor.inverse_func(raw_pred)
 
     def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
         if not self.config.model.xgboost.size_penalty_enabled:
@@ -358,7 +358,8 @@ class LightGBMModel(Model):
             return 0.0
 
         booster = regressor.regressor_.booster_
-        n_leaves = booster.num_leaves()
+        model_dump = booster.dump_model()
+        n_leaves = sum(tree_info["num_leaves"] for tree_info in model_dump["tree_info"])
         penalty = self.config.model.lightgbm.size_penalty_lambda * (n_leaves / 100000)
 
         if trial is not None:

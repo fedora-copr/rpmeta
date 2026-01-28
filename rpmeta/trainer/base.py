@@ -1,5 +1,4 @@
 import logging
-import sys
 import time
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -44,6 +43,10 @@ class ModelTrainer(Model):
         now = time.strftime("%Y-%m-%d_%H-%M-%S")
         self._model_directory = self.config.result_dir / f"{self.name}_{now}"
         self._model_directory.mkdir(parents=True, exist_ok=True)
+
+    def _log_model_size(self) -> None:
+        model_size = sum(f.stat().st_size for f in self._model_directory.iterdir() if f.is_file())
+        logger.info("Model size: %.2f MB", model_size / (1024 * 1024))
 
     @abstractmethod
     def param_space(self, trial: Trial) -> dict[str, Any]:
@@ -121,10 +124,8 @@ class ModelTrainer(Model):
         best_regressor.fit(X_train, y_train)
         y_pred = best_regressor.predict(X_test)
 
-        model_size = sys.getsizeof(best_regressor) / (1024 * 1024)
-        logger.info("Model size is %.2f MB", model_size)
-
         self.save_regressor(best_regressor, self._model_directory)
+        self._log_model_size()
 
         best_result = BestModelResult(
             model_name=self.name,
@@ -157,8 +158,6 @@ class ModelTrainer(Model):
         regressor.fit(X, y)
         logger.debug("Model fitting complete.")
 
-        model_size = sys.getsizeof(regressor) / (1024 * 1024)
-        logger.info("Model size is %.2f MB", model_size)
-
         self.save_regressor(regressor, self._model_directory)
+        self._log_model_size()
         return self._model_directory
