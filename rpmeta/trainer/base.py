@@ -44,6 +44,10 @@ class ModelTrainer(Model):
         self._model_directory = self.config.result_dir / f"{self.name}_{now}"
         self._model_directory.mkdir(parents=True, exist_ok=True)
 
+    def _log_model_size(self) -> None:
+        model_size = sum(f.stat().st_size for f in self._model_directory.iterdir() if f.is_file())
+        logger.info("Model size: %.2f MB", model_size / (1024 * 1024))
+
     @abstractmethod
     def param_space(self, trial: Trial) -> dict[str, Any]:
         """Suggest hyperparameters for Optuna trial"""
@@ -90,7 +94,10 @@ class ModelTrainer(Model):
             trial.set_user_attr("fit_time", fit_time)
 
             y_pred = pipeline.predict(X_test)
-            return root_mean_squared_error(y_test, y_pred)
+            return root_mean_squared_error(y_test, y_pred) + self.compute_size_penalty(
+                pipeline,
+                trial,
+            )
 
         study = optuna.create_study(
             direction="minimize",
@@ -118,6 +125,7 @@ class ModelTrainer(Model):
         y_pred = best_regressor.predict(X_test)
 
         self.save_regressor(best_regressor, self._model_directory)
+        self._log_model_size()
 
         best_result = BestModelResult(
             model_name=self.name,
@@ -151,4 +159,5 @@ class ModelTrainer(Model):
         logger.debug("Model fitting complete.")
 
         self.save_regressor(regressor, self._model_directory)
+        self._log_model_size()
         return self._model_directory

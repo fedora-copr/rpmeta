@@ -3,12 +3,10 @@ import logging
 import math
 from pathlib import Path
 
-from sklearn.compose import TransformedTargetRegressor
-
 from rpmeta.config import Config, ModelBehavior
 from rpmeta.constants import ModelEnum, TimeFormat
 from rpmeta.dataset import InputRecord
-from rpmeta.model import get_model_by_name
+from rpmeta.model import Model, get_model_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +14,13 @@ logger = logging.getLogger(__name__)
 class Predictor:
     def __init__(
         self,
-        model: TransformedTargetRegressor,
+        model: Model,
         category_maps: dict[str, list[str]],
         config: Config,
-        model_name: str,
     ) -> None:
         self.model = model
         self.category_maps = category_maps
         self.config = config
-        self.model_name = model_name
 
     @classmethod
     def load(
@@ -48,14 +44,14 @@ class Predictor:
         """
         logger.info("Loading model %s from %s", model_name, model_path)
 
-        model_handler = get_model_by_name(model_name, config)
-        model = model_handler.load_regressor(model_path)
+        model = get_model_by_name(model_name, config)
+        model.load_regressor(model_path)
 
         logger.info("Loading category maps from %s", category_maps_path)
         with open(category_maps_path, encoding="utf-8") as f:
             category_maps = json.load(f)
 
-        return cls(model, category_maps, config, model_name)
+        return cls(model, category_maps, config)
 
     def predict(self, input_data: InputRecord, behavior: ModelBehavior) -> int:
         """

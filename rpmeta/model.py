@@ -23,6 +23,20 @@ class Model(ABC):
     def __init__(self, name: str, config: Config) -> None:
         self.name = name.lower()
         self.config = config
+        self._loaded_regressor: TransformedTargetRegressor | None = None
+
+    @property
+    def regressor(self) -> TransformedTargetRegressor:
+        """
+        Get the loaded regressor.
+
+        Raises:
+            RuntimeError: If the model is not loaded.
+        """
+        if self._loaded_regressor is None:
+            raise RuntimeError("Model not loaded. Call load_regressor() first.")
+
+        return self._loaded_regressor
 
     def create_regressor(
         self,
@@ -82,6 +96,20 @@ class Model(ABC):
         """
         ...
 
+    @abstractmethod
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        """
+        Compute the size penalty for the model.
+
+        Args:
+            regressor: The fitted regressor (may be a pipeline/wrapper)
+            trial: Optional Optuna trial for logging extra info
+
+        Returns:
+            Penalty value (float, 0 if not enabled)
+        """
+        ...
+
     @property
     def native_model_filename(self) -> str:
         """
@@ -91,6 +119,18 @@ class Model(ABC):
             Filename for the native model
         """
         return f"{ModelStorageBaseNames.NATIVE_MODEL}.{self.get_native_model_extension()}"
+
+    def predict(self, data: Any) -> np.ndarray:
+        """
+        Perform prediction using the loaded regressor.
+
+        Args:
+            data: Input data (DataFrame or array-like)
+
+        Returns:
+            Predictions array
+        """
+        return self.regressor.predict(data)
 
     def save_regressor(self, regressor: TransformedTargetRegressor, path: Path) -> None:
         """
@@ -125,7 +165,7 @@ class Model(ABC):
         regressor.regressor_ = regressor_instance
         logger.info("Saved regressor skeleton to %s", skeleton_path)
 
-    def load_regressor(self, path: Path) -> TransformedTargetRegressor:
+    def load_regressor(self, path: Path) -> "Model":
         """
         Load the whole regressor from the specified path, including model and transformer.
 
@@ -133,7 +173,7 @@ class Model(ABC):
             path: The path to the directory containing the data
 
         Returns:
-            The loaded TransformedTargetRegressor
+            Self (Model)
         """
         native_model_path = path / self.native_model_filename
         if not native_model_path.exists():
@@ -151,8 +191,9 @@ class Model(ABC):
         regressor: TransformedTargetRegressor = joblib.load(skeleton_path, mmap_mode="r")
         regressor.regressor_ = model
 
+        self._loaded_regressor = regressor
         logger.info("Successfully loaded regressor from %s", path)
-        return regressor
+        return self
 
 
 class XGBoostModel(Model):
@@ -184,6 +225,8 @@ class XGBoostModel(Model):
         return self._regressor(
             enable_categorical=True,
             tree_method="hist",
+            max_depth=0,
+            grow_policy="lossguide",
             n_jobs=self.config.model.n_jobs,
             random_state=self.config.model.random_state,
             objective="reg:squarederror",
@@ -203,6 +246,45 @@ class XGBoostModel(Model):
         params = regressor.get_xgb_params()
         logger.debug("Loaded XGBoost model with booster params: %s", params)
         return regressor
+
+    def predict(self, data: Any) -> np.ndarray:
+        """
+        Perform efficient prediction using XGBoost's inplace_predict.
+
+        Bypasses the sklearn API and DMatrix creation overhead, the Python API
+        predict() creates a new DMatrix on every call, causing expensive memory copies
+        (see issue #45).
+
+        Args:
+            data: Input data (DataFrame or array-like)
+
+        Returns:
+            Predictions array
+        """
+        booster = self.regressor.regressor_.get_booster()
+        raw_pred = booster.inplace_predict(data)
+        # lost the inverse transformation here because of the inplace_predict :(
+        # https://xgboost.readthedocs.io/en/stable/prediction.html#in-place-prediction
+        return self.regressor.inverse_func(raw_pred)
+
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        if not self.config.model.xgboost.size_penalty_enabled:
+            return 0.0
+
+        booster = regressor.regressor_.get_booster()
+        n_nodes = booster.trees_to_dataframe().shape[0]
+        penalty = self.config.model.xgboost.size_penalty_lambda * (n_nodes / 100000)
+
+        if trial is not None:
+            trial.set_user_attr("n_nodes", n_nodes)
+            trial.set_user_attr("size_penalty", penalty)
+            logger.debug(
+                "XGBoost model size penalty details - n_nodes: %d, penalty: %.6f",
+                n_nodes,
+                penalty,
+            )
+
+        return penalty
 
 
 class LightGBMModel(Model):
@@ -270,6 +352,26 @@ class LightGBMModel(Model):
             regressor._objective,
         )
         return regressor
+
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        if not self.config.model.lightgbm.size_penalty_enabled:
+            return 0.0
+
+        booster = regressor.regressor_.booster_
+        model_dump = booster.dump_model()
+        n_leaves = sum(tree_info["num_leaves"] for tree_info in model_dump["tree_info"])
+        penalty = self.config.model.lightgbm.size_penalty_lambda * (n_leaves / 100000)
+
+        if trial is not None:
+            trial.set_user_attr("n_leaves", n_leaves)
+            trial.set_user_attr("size_penalty", penalty)
+            logger.debug(
+                "LightGBM model size penalty details - n_leaves: %d, penalty: %.6f",
+                n_leaves,
+                penalty,
+            )
+
+        return penalty
 
 
 def get_all_models(config: Optional[Config] = None) -> list[Model]:

@@ -26,8 +26,9 @@ def test_predictor_load(mock_file, mock_load, mock_load_regressor, example_confi
         config=example_config,
     )
     assert isinstance(predictor, Predictor)
-    assert predictor.model == mock_model
+    assert predictor.model is not None
     assert predictor.category_maps == {"package_name": ["pkg1", "pkg2"], "feature": ["a", "b"]}
+    assert predictor.model.name == "xgboost"
 
 
 def test_predict_returns_prediction(example_config):
@@ -43,8 +44,10 @@ def test_predict_returns_prediction(example_config):
     mock_input.to_data_frame.return_value = pd.DataFrame([df_dict])
     mock_model = MagicMock()
     mock_model.predict.return_value = np.array([42])
-    predictor = Predictor(mock_model, category_maps, example_config, "xgboost")
+
+    predictor = Predictor(mock_model, category_maps, example_config)
     result = predictor.predict(mock_input, example_config.model.behavior)
+
     assert result == 42
     mock_model.predict.assert_called_once()
 
@@ -53,7 +56,9 @@ def test_predict_unknown_package_name_logs_and_returns_minus_one(caplog, example
     category_maps = {"package_name": ["pkg1"], "feature": ["a"]}
     mock_input = MagicMock()
     mock_input.package_name = "unknown"
-    predictor = Predictor(MagicMock(), category_maps, example_config, "xgboost")
+    mock_model = MagicMock()
+
+    predictor = Predictor(mock_model, category_maps, example_config)
     with caplog.at_level("ERROR"):
         result = predictor.predict(mock_input, example_config.model.behavior)
 
