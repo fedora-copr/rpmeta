@@ -1,15 +1,22 @@
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Optional
 
-import joblib
 import numpy as np
-from sklearn.compose import TransformedTargetRegressor
+import pandas as pd
 
 from rpmeta.config import Config
-from rpmeta.constants import ModelEnum, ModelFileExtensions, ModelStorageBaseNames
+from rpmeta.constants import (
+    ALL_FEATURES,
+    CATEGORICAL_FEATURES,
+    NUMERICAL_FEATURES,
+    ModelEnum,
+    ModelFileExtensions,
+    ModelStorageBaseNames,
+)
 
 if TYPE_CHECKING:
     from lightgbm import LGBMRegressor
@@ -20,32 +27,17 @@ logger = logging.getLogger(__name__)
 
 
 class Model(ABC):
+    TARGET_FUNC: Callable = np.log1p
+    INVERSE_FUNC: Callable = np.expm1
+
     def __init__(self, name: str, config: Config) -> None:
         self.name = name.lower()
         self.config = config
-
-    def create_regressor(
-        self,
-        params: dict[str, int | float | str],
-    ) -> TransformedTargetRegressor:
-        """
-        Return a regressor with the given parameters.
-
-        Args:
-            params (dict): Dictionary of parameters for the regressor
-
-        Returns:
-            A regressor with the specified parameters
-        """
-        return TransformedTargetRegressor(
-            regressor=self._make_regressor(params),
-            func=np.log1p,
-            inverse_func=np.expm1,
-        )
+        self._native_model: Any = None
 
     @abstractmethod
-    def _make_regressor(self, params: dict[str, int | float | str]) -> Any:
-        """Instantiate the base regressor (without preprocessing)"""
+    def make_regressor(self, params: dict[str, int | float | str]) -> Any:
+        """Instantiate the native regressor with given hyperparameters."""
         ...
 
     @abstractmethod
@@ -92,67 +84,73 @@ class Model(ABC):
         """
         return f"{ModelStorageBaseNames.NATIVE_MODEL}.{self.get_native_model_extension()}"
 
-    def save_regressor(self, regressor: TransformedTargetRegressor, path: Path) -> None:
+    def save_regressor(self, regressor: Any, path: Path) -> None:
         """
-        Save the whole regressor to the specified path, including model and transformer.
-
-        The regressor is split into two parts:
-        1. Native model - saved using the library's native format for best compatibility
-        2. Skeleton - the TransformedTargetRegressor without the model, saved via joblib
+        Save the native model to the specified directory.
 
         Args:
-            regressor: The TransformedTargetRegressor to save
-            path: The directory to save the regressor
+            regressor: The native regressor to save
+            path: The directory to save the model into
         """
         if not path.is_dir():
             raise ValueError(f"Provided path {path} is not a directory.")
 
         native_model_path = path / self.native_model_filename
-        self.save_model(regressor.regressor_, native_model_path)
-        logger.debug("Saved native model for '%s' to %s", self.name, native_model_path)
+        self.save_model(regressor, native_model_path)
+        logger.info("Saved native model for '%s' to %s", self.name, native_model_path)
 
-        logger.debug("Saving regressor skeleton to %s", path)
-
-        # to not save the model twice
-        regressor_instance = regressor.regressor_
-        regressor.regressor_ = None
-
-        skeleton_path = path / f"{ModelStorageBaseNames.SKELETON_NAME}.joblib"
-        joblib.dump(regressor, skeleton_path)
-        logger.debug("Saved object to %s", skeleton_path)
-
-        # restore the regressor state
-        regressor.regressor_ = regressor_instance
-        logger.info("Saved regressor skeleton to %s", skeleton_path)
-
-    def load_regressor(self, path: Path) -> TransformedTargetRegressor:
+    def load_regressor(self, path: Path) -> None:
         """
-        Load the whole regressor from the specified path, including model and transformer.
+        Load the native model from the specified directory.
 
         Args:
-            path: The path to the directory containing the data
-
-        Returns:
-            The loaded TransformedTargetRegressor
+            path: The path to the directory containing the model files
         """
         native_model_path = path / self.native_model_filename
         if not native_model_path.exists():
             raise FileNotFoundError(f"Native model file {native_model_path} does not exist.")
 
-        skeleton_path = path / f"{ModelStorageBaseNames.SKELETON_NAME}.joblib"
-        if not skeleton_path.exists():
-            raise FileNotFoundError(f"Model skeleton file {skeleton_path} does not exist.")
-
         logger.debug("Loading native model '%s' from %s", self.name, native_model_path)
-        model = self.load_model(native_model_path)
+        self._native_model = self.load_model(native_model_path)
+        logger.info("Successfully loaded model from %s", path)
 
-        logger.debug("Loading regressor skeleton from %s", skeleton_path)
-        # Use mmap_mode='r' for memory-efficient loading of large models
-        regressor: TransformedTargetRegressor = joblib.load(skeleton_path, mmap_mode="r")
-        regressor.regressor_ = model
+    def prepare_for_prediction(
+        self,
+        category_maps: dict[str, list[str]],
+    ) -> None:
+        """
+        Pre-build encoding structures
 
-        logger.info("Successfully loaded regressor from %s", path)
-        return regressor
+        Builds:
+        - ``_cat_encoders``: ``{column: {category_string: int_code}}`` dicts
+        - ``_feature_types``: ``["c", ..., "q", ...]`` list for feature types
+        - ``_inverse_func``: inverse target transform
+        """
+        if self._native_model is None:
+            raise RuntimeError("Model not loaded. Call load_regressor() first.")
+
+        self._cat_encoders: dict[str, dict[str, int]] = {
+            col: {cat: code for code, cat in enumerate(cats)} for col, cats in category_maps.items()
+        }
+        self._feature_types: list[str] = ["c"] * len(CATEGORICAL_FEATURES) + ["q"] * len(
+            NUMERICAL_FEATURES,
+        )
+        self._inverse_func = self.INVERSE_FUNC
+
+    def predict(self, df: pd.DataFrame) -> np.ndarray:
+        """
+        Make prediction on the given DataFrame.
+
+        Args:
+            df: DataFrame with features matching ALL_FEATURES
+
+        Returns:
+            Array of predictions with the inverse target transform already applied
+        """
+        if self._native_model is None:
+            raise RuntimeError("Model not loaded. Call load_regressor() first.")
+
+        return self.INVERSE_FUNC(self._native_model.predict(df))
 
 
 class XGBoostModel(Model):
@@ -179,7 +177,7 @@ class XGBoostModel(Model):
     def _regressor(self) -> type["XGBRegressor"]:
         return self.xgb.XGBRegressor
 
-    def _make_regressor(self, params: dict[str, int | float | str]) -> "XGBRegressor":
+    def make_regressor(self, params: dict[str, int | float | str]) -> "XGBRegressor":
         logger.debug("Creating XGBoost regressor with params: %s", params)
         return self._regressor(
             enable_categorical=True,
@@ -203,6 +201,45 @@ class XGBoostModel(Model):
         params = regressor.get_xgb_params()
         logger.debug("Loaded XGBoost model with booster params: %s", params)
         return regressor
+
+    def prepare_for_prediction(
+        self,
+        category_maps: dict[str, list[str]],
+    ) -> None:
+        super().prepare_for_prediction(category_maps)
+        self._booster = self._native_model.get_booster()
+
+    def predict(self, df: pd.DataFrame) -> np.ndarray:
+        """
+        Optimized prediction that bypasses XGBoost's expensive Python-side
+        categorical string serialization by encoding features to integer codes
+        and constructing a DMatrix directly.
+        """
+        n_rows = len(df)
+        n_cols = len(ALL_FEATURES)
+        data = np.empty((n_rows, n_cols), dtype=np.float32)
+
+        for i, feat in enumerate(ALL_FEATURES):
+            col = df[feat]
+            if feat in self._cat_encoders:
+                if isinstance(col.dtype, pd.CategoricalDtype):
+                    codes = col.cat.codes.to_numpy(dtype=np.float32)
+                    codes[codes < 0] = np.nan
+                    data[:, i] = codes
+                else:
+                    data[:, i] = col.map(
+                        self._cat_encoders[feat],
+                    ).to_numpy(dtype=np.float32)
+            else:
+                data[:, i] = col.to_numpy(dtype=np.float32)
+
+        dmatrix = self.xgb.DMatrix(
+            data,
+            feature_names=list(ALL_FEATURES),
+            feature_types=self._feature_types,
+        )
+        raw_pred = self._booster.predict(dmatrix)
+        return self._inverse_func(raw_pred)
 
 
 class LightGBMModel(Model):
@@ -229,7 +266,7 @@ class LightGBMModel(Model):
     def _regressor(self) -> type["LGBMRegressor"]:
         return self.lgbm.LGBMRegressor
 
-    def _make_regressor(self, params: dict[str, int | float | str]) -> "LGBMRegressor":
+    def make_regressor(self, params: dict[str, int | float | str]) -> "LGBMRegressor":
         early_stopping_rounds = 0
         if self.config.model.lightgbm.early_stopping_rounds is not None:
             early_stopping_rounds = self.config.model.lightgbm.early_stopping_rounds

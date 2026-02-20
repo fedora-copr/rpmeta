@@ -4,7 +4,7 @@ import pytest
 
 from rpmeta.config import Config
 from rpmeta.constants import CATEGORICAL_FEATURES, NUMERICAL_FEATURES
-from rpmeta.model import LightGBMModel, XGBoostModel, get_model_by_name
+from rpmeta.model import LightGBMModel, Model, XGBoostModel, get_model_by_name
 
 
 def _create_test_data(
@@ -27,6 +27,10 @@ def _create_test_data(
     return X, y
 
 
+def _category_maps_from_df(df: pd.DataFrame) -> dict[str, list[str]]:
+    return {col: list(df[col].cat.categories) for col in CATEGORICAL_FEATURES}
+
+
 class TestModelPersistence:
     @pytest.fixture
     def test_data(self):
@@ -39,19 +43,19 @@ class TestModelPersistence:
     def test_lightgbm_save_load_predictions_match(self, test_data, config, tmp_path):
         X, y = test_data
         model = LightGBMModel(config)
+        category_maps = _category_maps_from_df(X)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
-
-        predictions_before = regressor.predict(X)
+        regressor = model.make_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, Model.TARGET_FUNC(y))
+        predictions_before = Model.INVERSE_FUNC(regressor.predict(X))
 
         save_path = tmp_path / "lightgbm_model"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
 
-        loaded_regressor = model.load_regressor(save_path)
-
-        predictions_after = loaded_regressor.predict(X)
+        model.load_regressor(save_path)
+        model.prepare_for_prediction(category_maps)
+        predictions_after = model.predict(X)
 
         np.testing.assert_allclose(
             predictions_before,
@@ -63,19 +67,19 @@ class TestModelPersistence:
     def test_xgboost_save_load_predictions_match(self, test_data, config, tmp_path):
         X, y = test_data
         model = XGBoostModel(config)
+        category_maps = _category_maps_from_df(X)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
-
-        predictions_before = regressor.predict(X)
+        regressor = model.make_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, Model.TARGET_FUNC(y))
+        predictions_before = Model.INVERSE_FUNC(regressor.predict(X))
 
         save_path = tmp_path / "xgboost_model"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
 
-        loaded_regressor = model.load_regressor(save_path)
-
-        predictions_after = loaded_regressor.predict(X)
+        model.load_regressor(save_path)
+        model.prepare_for_prediction(category_maps)
+        predictions_after = model.predict(X)
 
         np.testing.assert_allclose(
             predictions_before,
@@ -94,20 +98,20 @@ class TestModelPersistence:
     ):
         X, y = test_data
         model = get_model_by_name(model_name, config)
+        category_maps = _category_maps_from_df(X)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
-
-        predictions_before = regressor.predict(X)
+        regressor = model.make_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, Model.TARGET_FUNC(y))
+        predictions_before = Model.INVERSE_FUNC(regressor.predict(X))
 
         save_path = tmp_path / f"{model_name}_model"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
 
         fresh_model = get_model_by_name(model_name, config)
-        loaded_regressor = fresh_model.load_regressor(save_path)
-
-        predictions_after = loaded_regressor.predict(X)
+        fresh_model.load_regressor(save_path)
+        fresh_model.prepare_for_prediction(category_maps)
+        predictions_after = fresh_model.predict(X)
 
         np.testing.assert_allclose(
             predictions_before,
@@ -120,20 +124,26 @@ class TestModelPersistence:
     def test_multiple_save_load_cycles(self, model_name, test_data, config, tmp_path):
         X, y = test_data
         model = get_model_by_name(model_name, config)
+        category_maps = _category_maps_from_df(X)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
+        regressor = model.make_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, Model.TARGET_FUNC(y))
+        original_predictions = Model.INVERSE_FUNC(regressor.predict(X))
 
-        original_predictions = regressor.predict(X)
+        save_path = tmp_path / f"{model_name}_cycle_0"
+        save_path.mkdir()
+        model.save_regressor(regressor, save_path)
+        model.load_regressor(save_path)
 
-        current_regressor = regressor
-        for i in range(3):
-            save_path = tmp_path / f"{model_name}_cycle_{i}"
-            save_path.mkdir()
-            model.save_regressor(current_regressor, save_path)
-            current_regressor = model.load_regressor(save_path)
+        for i in range(1, 3):
+            cycle_path = tmp_path / f"{model_name}_cycle_{i}"
+            cycle_path.mkdir()
+            native_path = cycle_path / model.native_model_filename
+            model.save_model(model._native_model, native_path)
+            model.load_regressor(cycle_path)
 
-        final_predictions = current_regressor.predict(X)
+        model.prepare_for_prediction(category_maps)
+        final_predictions = model.predict(X)
 
         np.testing.assert_allclose(
             original_predictions,
@@ -143,47 +153,37 @@ class TestModelPersistence:
         )
 
     @pytest.mark.parametrize("model_name", ["lightgbm", "xgboost"])
-    def test_transformed_target_regressor_preserved(self, model_name, test_data, config, tmp_path):
-        X, y = test_data
+    def test_target_transform_functions(self, model_name, config):
         model = get_model_by_name(model_name, config)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
-
-        assert regressor.func is not None, "func (log1p) should be set"
-        assert regressor.inverse_func is not None, "inverse_func (expm1) should be set"
-
-        save_path = tmp_path / f"{model_name}_transformer"
-        save_path.mkdir()
-        model.save_regressor(regressor, save_path)
-        loaded_regressor = model.load_regressor(save_path)
-
-        assert loaded_regressor.func is not None, "func (log1p) should be preserved after load"
-        assert loaded_regressor.inverse_func is not None, (
-            "inverse_func (expm1) should be preserved after load"
-        )
-
         test_value = np.array([100.0])
-        original_transformed = regressor.func(test_value)
-        loaded_transformed = loaded_regressor.func(test_value)
-        np.testing.assert_array_equal(original_transformed, loaded_transformed)
+        transformed = model.TARGET_FUNC(test_value)
+        restored = model.INVERSE_FUNC(transformed)
+
+        np.testing.assert_allclose(
+            test_value,
+            restored,
+            rtol=1e-10,
+            err_msg="TARGET_FUNC and INVERSE_FUNC are not inverses of each other!",
+        )
 
     @pytest.mark.parametrize("model_name", ["lightgbm", "xgboost"])
     def test_prediction_shape_preserved(self, model_name, test_data, config, tmp_path):
         X, y = test_data
         model = get_model_by_name(model_name, config)
+        category_maps = _category_maps_from_df(X)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
-
-        predictions_before = regressor.predict(X)
+        regressor = model.make_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, Model.TARGET_FUNC(y))
+        predictions_before = Model.INVERSE_FUNC(regressor.predict(X))
 
         save_path = tmp_path / f"{model_name}_shape"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
-        loaded_regressor = model.load_regressor(save_path)
 
-        predictions_after = loaded_regressor.predict(X)
+        model.load_regressor(save_path)
+        model.prepare_for_prediction(category_maps)
+        predictions_after = model.predict(X)
 
         assert predictions_before.shape == predictions_after.shape, (
             f"Prediction shape changed: {predictions_before.shape} -> {predictions_after.shape}"
@@ -193,19 +193,21 @@ class TestModelPersistence:
     def test_single_sample_prediction(self, model_name, test_data, config, tmp_path):
         X, y = test_data
         model = get_model_by_name(model_name, config)
+        category_maps = _category_maps_from_df(X)
 
-        regressor = model.create_regressor({"n_estimators": 10, "learning_rate": 0.1})
-        regressor.fit(X, y)
+        regressor = model.make_regressor({"n_estimators": 10, "learning_rate": 0.1})
+        regressor.fit(X, Model.TARGET_FUNC(y))
 
         single_sample = X.iloc[[0]]
-        prediction_before = regressor.predict(single_sample)
+        prediction_before = Model.INVERSE_FUNC(regressor.predict(single_sample))
 
         save_path = tmp_path / f"{model_name}_single"
         save_path.mkdir()
         model.save_regressor(regressor, save_path)
-        loaded_regressor = model.load_regressor(save_path)
 
-        prediction_after = loaded_regressor.predict(single_sample)
+        model.load_regressor(save_path)
+        model.prepare_for_prediction(category_maps)
+        prediction_after = model.predict(single_sample)
 
         np.testing.assert_allclose(
             prediction_before,
