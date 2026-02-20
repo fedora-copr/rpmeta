@@ -1,10 +1,12 @@
 import logging
 import time
 from abc import abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import optuna
 import pandas as pd
 from optuna import Study, Trial
@@ -14,6 +16,18 @@ from rpmeta.config import Config
 from rpmeta.model import Model
 
 logger = logging.getLogger(__name__)
+
+
+class _TransformedPredictor:
+    """Stores a native regressor + inverse transform so the visualizer can call
+    ``.predict()`` and get results in the original target scale."""
+
+    def __init__(self, regressor: Any, inverse_func: Callable) -> None:
+        self._regressor = regressor
+        self._inverse_func = inverse_func
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:  # noqa: N803
+        return self._inverse_func(self._regressor.predict(X))
 
 
 @dataclass
@@ -79,17 +93,18 @@ class ModelTrainer(Model):
                 - List of TrialResult objects for each trial
                 - BestModelResult object containing the best model and its parameters
         """
+        y_train_t = self.TARGET_FUNC(y_train)
 
         def objective(trial: Trial) -> float:
             params = self.param_space(trial)
-            pipeline = self.create_regressor(params)
+            regressor = self.make_regressor(params)
 
             start = time.time()
-            pipeline.fit(X_train, y_train)
+            regressor.fit(X_train, y_train_t)
             fit_time = time.time() - start
             trial.set_user_attr("fit_time", fit_time)
 
-            y_pred = pipeline.predict(X_test)
+            y_pred = self.INVERSE_FUNC(regressor.predict(X_test))
             return root_mean_squared_error(y_test, y_pred)
 
         study = optuna.create_study(
@@ -111,11 +126,10 @@ class ModelTrainer(Model):
                 ),
             )
 
-        # refit best
-        best_regressor = self.create_regressor(study.best_trial.params)
+        best_regressor = self.make_regressor(study.best_trial.params)
+        best_regressor.fit(X_train, y_train_t)
 
-        best_regressor.fit(X_train, y_train)
-        y_pred = best_regressor.predict(X_test)
+        y_pred = self.INVERSE_FUNC(best_regressor.predict(X_test))
 
         self.save_regressor(best_regressor, self._model_directory)
 
@@ -126,7 +140,7 @@ class ModelTrainer(Model):
             neg_rmse=-root_mean_squared_error(y_test, y_pred),
             neg_mae=-mean_absolute_error(y_test, y_pred),
             params=study.best_trial.params,
-            model=best_regressor,  # Keep for immediate use in visualizer
+            model=_TransformedPredictor(best_regressor, self.INVERSE_FUNC),
         )
         return study, trial_results, best_result
 
@@ -145,9 +159,10 @@ class ModelTrainer(Model):
         Returns:
             Path: Path to the saved model
         """
-        regressor = self.create_regressor(self.default_params)
+        regressor = self.make_regressor(self.default_params)
+        y_t = self.TARGET_FUNC(y)
         logger.info("Fitting model %s with default parameters: %s", self.name, self.default_params)
-        regressor.fit(X, y)
+        regressor.fit(X, y_t)
         logger.debug("Model fitting complete.")
 
         self.save_regressor(regressor, self._model_directory)

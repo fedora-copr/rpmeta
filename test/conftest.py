@@ -161,7 +161,7 @@ def example_config():
 @pytest.fixture
 def base_model_subclass():
     class ConcreteModel(Model):
-        def _make_regressor(self, params):
+        def make_regressor(self, params):
             mock_regressor = MagicMock()
             mock_regressor.name = "mock_regressor"
             for key, value in params.items():
