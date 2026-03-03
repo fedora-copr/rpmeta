@@ -178,4 +178,7 @@ def base_model_subclass():
         def load_model(self, path):
             return joblib.load(path)
 
+        def compute_size_penalty(self, regressor, trial=None):
+            return 0.0
+
     return ConcreteModel

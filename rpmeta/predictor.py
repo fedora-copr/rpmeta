@@ -3,6 +3,8 @@ import logging
 import math
 from pathlib import Path
 
+import pandas as pd
+
 from rpmeta.config import Config, ModelBehavior
 from rpmeta.constants import ModelEnum, TimeFormat
 from rpmeta.dataset import InputRecord
@@ -21,6 +23,10 @@ class Predictor:
         self.model = model
         self.category_maps = category_maps
         self.config = config
+        self._category_dtypes: dict[str, pd.CategoricalDtype] = {
+            col: pd.CategoricalDtype(categories=cats, ordered=False)
+            for col, cats in category_maps.items()
+        }
 
     @classmethod
     def load(
@@ -74,7 +80,7 @@ class Predictor:
             )
             return -1
 
-        df = input_data.to_data_frame(self.category_maps)
+        df = input_data.to_data_frame(self.category_maps, category_dtypes=self._category_dtypes)
         pred = self.model.predict(df)
 
         # extract scalar value from prediction array
