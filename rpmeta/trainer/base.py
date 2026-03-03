@@ -69,6 +69,11 @@ class ModelTrainer(Model):
         """Fixed parameters optimized for the desired model, loaded from config"""
         ...
 
+    def _log_model_size(self, regressor: Any) -> None:
+        model_file = self._model_directory / self.native_model_filename
+        size_bytes = model_file.stat().st_size
+        logger.info("Model size on disk: %.2f MB", size_bytes / (1024 * 1024))
+
     def run_study(
         self,
         X_train: pd.DataFrame,  # noqa: N803
@@ -105,7 +110,9 @@ class ModelTrainer(Model):
             trial.set_user_attr("fit_time", fit_time)
 
             y_pred = self.INVERSE_FUNC(regressor.predict(X_test))
-            return root_mean_squared_error(y_test, y_pred)
+            rmse = root_mean_squared_error(y_test, y_pred)
+            penalty = self.compute_size_penalty(regressor, trial)
+            return rmse + penalty
 
         study = optuna.create_study(
             direction="minimize",
@@ -132,6 +139,7 @@ class ModelTrainer(Model):
         y_pred = self.INVERSE_FUNC(best_regressor.predict(X_test))
 
         self.save_regressor(best_regressor, self._model_directory)
+        self._log_model_size(best_regressor)
 
         best_result = BestModelResult(
             model_name=self.name,
@@ -166,4 +174,5 @@ class ModelTrainer(Model):
         logger.debug("Model fitting complete.")
 
         self.save_regressor(regressor, self._model_directory)
+        self._log_model_size(regressor)
         return self._model_directory

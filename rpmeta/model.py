@@ -62,6 +62,20 @@ class Model(ABC):
         ...
 
     @abstractmethod
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        """
+        Compute the size penalty for the model.
+
+        Args:
+            regressor: The fitted native regressor
+            trial: Optional Optuna trial for logging extra info
+
+        Returns:
+            Penalty value (float, 0 if not enabled)
+        """
+        ...
+
+    @abstractmethod
     def load_model(self, path: Path) -> Any:
         """
         Load the model natively with provided library (lightgbm, xgboost, etc.) from the given path
@@ -179,15 +193,18 @@ class XGBoostModel(Model):
 
     def make_regressor(self, params: dict[str, int | float | str]) -> "XGBRegressor":
         logger.debug("Creating XGBoost regressor with params: %s", params)
-        return self._regressor(
-            enable_categorical=True,
-            tree_method="hist",
-            n_jobs=self.config.model.n_jobs,
-            random_state=self.config.model.random_state,
-            objective="reg:squarederror",
-            early_stopping_rounds=self.config.model.xgboost.early_stopping_rounds,
-            **params,
-        )
+        base_params = {
+            "enable_categorical": True,
+            "tree_method": "hist",
+            "max_depth": 0,
+            "grow_policy": "lossguide",
+            "n_jobs": self.config.model.n_jobs,
+            "random_state": self.config.model.random_state,
+            "objective": "reg:squarederror",
+            "early_stopping_rounds": self.config.model.xgboost.early_stopping_rounds,
+        }
+        base_params.update(params)
+        return self._regressor(**base_params)
 
     def get_native_model_extension(self) -> str:
         return ModelFileExtensions.XGBOOST
@@ -201,6 +218,25 @@ class XGBoostModel(Model):
         params = regressor.get_xgb_params()
         logger.debug("Loaded XGBoost model with booster params: %s", params)
         return regressor
+
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        if not self.config.model.xgboost.size_penalty_enabled:
+            return 0.0
+
+        booster = regressor.get_booster()
+        n_nodes = booster.trees_to_dataframe().shape[0]
+        penalty = self.config.model.xgboost.size_penalty_lambda * (n_nodes / 100000)
+
+        if trial is not None:
+            trial.set_user_attr("n_nodes", n_nodes)
+            trial.set_user_attr("size_penalty", penalty)
+            logger.debug(
+                "XGBoost model size penalty details - n_nodes: %d, penalty: %.6f",
+                n_nodes,
+                penalty,
+            )
+
+        return penalty
 
     def prepare_for_prediction(
         self,
@@ -227,15 +263,13 @@ class XGBoostModel(Model):
                     codes[codes < 0] = np.nan
                     data[:, i] = codes
                 else:
-                    data[:, i] = col.map(
-                        self._cat_encoders[feat],
-                    ).to_numpy(dtype=np.float32)
+                    data[:, i] = col.map(self._cat_encoders[feat]).to_numpy(dtype=np.float32)
             else:
                 data[:, i] = col.to_numpy(dtype=np.float32)
 
         dmatrix = self.xgb.DMatrix(
             data,
-            feature_names=list(ALL_FEATURES),
+            feature_names=ALL_FEATURES,
             feature_types=self._feature_types,
         )
         raw_pred = self._booster.predict(dmatrix)
@@ -271,14 +305,15 @@ class LightGBMModel(Model):
         if self.config.model.lightgbm.early_stopping_rounds is not None:
             early_stopping_rounds = self.config.model.lightgbm.early_stopping_rounds
 
-        return self._regressor(
-            n_jobs=self.config.model.n_jobs,
-            random_state=self.config.model.random_state,
-            verbose=1 if self.config.model.verbose else -1,
-            objective="regression",
-            early_stopping_rounds=early_stopping_rounds,
-            **params,
-        )
+        base_params: dict[str, int | float | str] = {
+            "n_jobs": self.config.model.n_jobs,
+            "random_state": self.config.model.random_state,
+            "verbose": 1 if self.config.model.verbose else -1,
+            "objective": "regression",
+            "early_stopping_rounds": early_stopping_rounds,
+        }
+        base_params.update(params)
+        return self._regressor(**base_params)
 
     def get_native_model_extension(self) -> str:
         return ModelFileExtensions.LIGHTGBM
@@ -307,6 +342,26 @@ class LightGBMModel(Model):
             regressor._objective,
         )
         return regressor
+
+    def compute_size_penalty(self, regressor: Any, trial: Any = None) -> float:
+        if not self.config.model.lightgbm.size_penalty_enabled:
+            return 0.0
+
+        booster = regressor.booster_
+        model_dump = booster.dump_model()
+        n_leaves = sum(tree_info["num_leaves"] for tree_info in model_dump["tree_info"])
+        penalty = self.config.model.lightgbm.size_penalty_lambda * (n_leaves / 100000)
+
+        if trial is not None:
+            trial.set_user_attr("n_leaves", n_leaves)
+            trial.set_user_attr("size_penalty", penalty)
+            logger.debug(
+                "LightGBM model size penalty details - n_leaves: %d, penalty: %.6f",
+                n_leaves,
+                penalty,
+            )
+
+        return penalty
 
 
 def get_all_models(config: Optional[Config] = None) -> list[Model]:

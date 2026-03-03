@@ -208,10 +208,19 @@ class InputRecord(BaseModel):
             "hw_info": self.hw_info.model_dump(),
         }
 
-    def to_data_frame(self, category_maps: dict[str, list[str]]) -> pd.DataFrame:
+    def to_data_frame(
+        self,
+        category_maps: dict[str, list[str]],
+        category_dtypes: Optional[dict[str, pd.CategoricalDtype]] = None,
+    ) -> pd.DataFrame:
         """
         Convert the record to a pandas DataFrame that the model understands.
         This is used for prediction.
+
+        Args:
+            category_maps: Mapping of column name to list of categories.
+            category_dtypes: Pre-created CategoricalDtype objects.
+                Falls back to building from category_maps if not provided.
         """
         df = pd.json_normalize(self.model_dump())
         df["os"] = self.os
@@ -219,9 +228,12 @@ class InputRecord(BaseModel):
         df["os_version"] = self.os_version
         df["os_arch"] = self.os_arch
 
-        # preprocess
         for col, cat_list in category_maps.items():
-            dtype = pd.CategoricalDtype(categories=cat_list, ordered=False)
+            if category_dtypes is None:
+                dtype = pd.CategoricalDtype(categories=cat_list, ordered=False)
+            else:
+                dtype = category_dtypes[col]
+
             df[col] = df[col].astype(dtype)
 
         df["hw_info.ram"] = df["hw_info.ram"].astype("float32")
