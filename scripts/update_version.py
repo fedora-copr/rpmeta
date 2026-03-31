@@ -34,7 +34,7 @@ def update_version(new_version):
 
     updated = re.sub(
         r'(__version__\s*=\s*["\'])([^"\']+)(["\'])',
-        f"\\1{new_version}\\3",
+        rf"\g<1>{new_version}\g<3>",
         content,
     )
 
@@ -50,9 +50,9 @@ def update_version(new_version):
 
     updated = re.sub(
         r'(version\s*=\s*["\'])([^"\']+)(["\'])',
-        f"\\1{new_version}\\3",
+        rf"\g<1>{new_version}\g<3>",
         content,
-        count=1,  # replace the first occurrence
+        count=1,
     )
 
     with open(pyproject_path, "w") as f:
@@ -68,7 +68,7 @@ def update_version(new_version):
 
         updated = re.sub(
             r"(Version:\s*)([0-9.]+)",
-            f"\\1{new_version}",
+            rf"\g<1>{new_version}",
             content,
         )
 
