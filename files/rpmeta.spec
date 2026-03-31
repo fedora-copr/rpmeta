@@ -13,7 +13,7 @@ and serving a REST API endpoint.
 %endif
 
 Name:           %pkg_name
-Version:        0.1.0
+Version:        0.2.0
 Release:        %autorelease
 Summary:        Estimate duration of RPM package build
 

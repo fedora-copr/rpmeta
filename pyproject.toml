@@ -1,6 +1,6 @@
 [project]
 name = "rpmeta"
-version = "0.1.0"
+version = "0.2.0"
 description = "Estimate duration of RPM package build"
 authors = [
     { name = "Copr Team", email = "copr-devel@lists.fedorahosted.org" },
