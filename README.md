@@ -18,6 +18,9 @@ fetching data, and serving a REST API endpoint.
 
 ### Installation
 
+Note: Models used for this tool are stored at
+[HuggingFace](https://huggingface.co/fedora-copr/rpmeta).
+
 #### Fedora:
 
 ```bash
